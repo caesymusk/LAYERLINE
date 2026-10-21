@@ -1,0 +1,1525 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Layerline: a multilayer video editor that runs in your browser and saves to your Google Drive.">
+<title>Layerline Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&family=Martian+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: three-pane editor (media bin / preview / inspector) over a full-width multitrack timeline. Single committed dark look, like an edit suite. */
+:root{
+  --bg:#121317; --panel:#191b21; --panel-2:#20232b; --panel-3:#282c36;
+  --line:#2b2f39; --line-strong:#3f4452;
+  --fg:#ebe8e2; --muted:#9b9da8; --faint:#6d707c;
+  --accent:#f0b13e; --accent-ink:#1d1504;
+  --clip-video:#3a679f; --clip-image:#4b5f8f; --clip-text:#7b55b3; --clip-gen:#2b7f7c; --clip-audio:#3a8a5e;
+  --danger:#e06a5e;
+  --font-display:"Bricolage Grotesque", "Arial Narrow", system-ui, sans-serif;
+  --font-ui:"Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:"Martian Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-ui);font-size:13px;overflow:hidden;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.app{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr) clamp(210px,36vh,380px);gap:10px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+.brand{display:flex;align-items:center;gap:8px;font-family:var(--font-display);font-weight:800;font-size:19px;letter-spacing:-.01em}
+.brand svg{flex:none}
+.proj{width:170px;min-width:0;height:30px;background:transparent;border:1px solid transparent;border-radius:6px;padding:0 8px;color:var(--muted)}
+.proj:hover,.proj:focus{border-color:var(--line);background:var(--panel)}
+.spacer{flex:1}
+.local{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:12px;padding:0 10px;height:28px;border:1px solid var(--line);border-radius:999px}
+.local svg{color:var(--clip-audio)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 12px;border-radius:6px;border:1px solid var(--line);background:var(--panel-2);color:var(--fg);cursor:pointer;font-size:12.5px;font-weight:500;white-space:nowrap}
+.btn:hover:not(:disabled){border-color:var(--line-strong);background:var(--panel-3)}
+.btn:disabled{opacity:.38;cursor:default}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:600}
+.btn.primary:hover:not(:disabled){background:var(--accent);filter:brightness(1.08)}
+.btn.icon{width:32px;padding:0}
+.btn.danger{color:var(--danger)}
+.btn[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+select{height:32px;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:0 8px;cursor:pointer}
+
+/* work area */
+.work{display:grid;grid-template-columns:220px minmax(0,1fr) 264px;gap:10px;min-height:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;min-height:0;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.panel-h{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);padding:10px 12px;margin:0;border-bottom:1px solid var(--line);flex:none}
+
+/* bin */
+.bin-body{padding:10px;display:flex;flex-direction:column;gap:12px;overflow:auto;min-height:0}
+.drop{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;padding:16px 10px;border:1.5px dashed var(--line-strong);border-radius:8px;cursor:pointer;color:var(--muted);font-size:12px;transition:border-color .15s,background .15s}
+.drop strong{color:var(--fg);font-size:13px;font-weight:600}
+.drop:hover,.drop.over{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,transparent)}
+.drive-btn{width:100%;justify-content:flex-start}
+.drive-btn svg{flex:none}
+.dsearch{display:flex;gap:8px}
+.dsearch input{flex:1;min-width:0;height:34px;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:0 10px}
+.dtabs{display:flex;gap:6px;flex-wrap:wrap}
+.dlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;max-height:46vh;overflow:auto;min-height:60px}
+.drow{display:grid;grid-template-columns:28px minmax(0,1fr) auto auto;align-items:center;gap:10px;padding:7px 8px;border-radius:6px;background:var(--panel-2)}
+.drow .ic{width:28px;height:28px;border-radius:5px;display:grid;place-items:center;background:var(--panel-3);color:var(--muted)}
+.drow .nm{display:flex;flex-direction:column;min-width:0}
+.drow .nm b{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.drow .nm span{color:var(--faint);font-size:11px;font-family:var(--font-mono)}
+.drow .big{font-size:11px;color:var(--accent);white-space:nowrap}
+.drow .btn{height:28px}
+.dmsg{margin:0;padding:14px 4px;color:var(--muted);font-size:12.5px;line-height:1.5}
+.dmsg.err{color:var(--danger)}
+.mlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.mitem{display:grid;grid-template-columns:52px minmax(0,1fr) 28px;align-items:center;gap:8px;padding:5px;border-radius:6px;background:var(--panel-2);cursor:grab}
+.mthumb{width:52px;height:32px;border-radius:4px;background:var(--panel-3) center/cover no-repeat;display:grid;place-items:center;color:var(--muted)}
+.minfo{display:flex;flex-direction:column;min-width:0}
+.mname{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}
+.mmeta{color:var(--faint);font-size:11px;font-family:var(--font-mono)}
+.madd{width:28px;height:28px;border-radius:5px;border:1px solid var(--line);background:transparent;cursor:pointer;color:var(--muted);font-size:16px;line-height:1}
+.madd:hover{color:var(--accent);border-color:var(--accent)}
+.sub{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:2px 0 0}
+.gen-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.gen-grid .btn{justify-content:flex-start;padding:0 9px}
+.swatch{width:10px;height:10px;border-radius:2px;flex:none}
+.hint{color:var(--faint);font-size:11.5px;line-height:1.45;margin:0}
+
+/* stage */
+.stage-view{flex:1;min-height:0;position:relative;display:grid;place-items:center;padding:12px;background:
+  repeating-conic-gradient(var(--panel) 0 25%, var(--bg) 0 50%) 0 0/18px 18px}
+#stage{display:block;background:#000;box-shadow:0 8px 30px rgba(0,0,0,.45);cursor:move;touch-action:none}
+.transport{display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px;border-top:1px solid var(--line);flex-wrap:wrap}
+.play{width:40px;height:40px;border-radius:50%;background:var(--accent);color:var(--accent-ink);border:none}
+.play:hover:not(:disabled){background:var(--accent);filter:brightness(1.08)}
+.tc{font-family:var(--font-mono);font-size:12px;font-variant-numeric:tabular-nums;color:var(--muted);margin-left:8px;white-space:nowrap}
+.tc b{color:var(--fg);font-weight:500}
+
+/* inspector */
+.insp-body{overflow:auto;min-height:0;padding:4px 0 12px}
+.isec{padding:10px 12px;display:flex;flex-direction:column;gap:9px;border-bottom:1px solid var(--line)}
+.isec:last-child{border-bottom:none}
+.isec h3{margin:0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+.f{display:grid;grid-template-columns:76px minmax(0,1fr) 46px;align-items:center;gap:8px}
+.f label{color:var(--muted);font-size:12px}
+.f output{font-family:var(--font-mono);font-size:10.5px;text-align:right;color:var(--fg);font-variant-numeric:tabular-nums}
+.f2{grid-template-columns:76px minmax(0,1fr)}
+.fcol{grid-template-columns:1fr}
+.f select{width:100%;height:30px}
+input[type=range]{width:100%;accent-color:var(--accent);min-width:0}
+input[type=color]{width:100%;height:28px;border:1px solid var(--line);border-radius:6px;background:var(--panel-2);padding:2px;cursor:pointer}
+input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;justify-self:start}
+textarea{width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:7px 8px;resize:vertical;min-height:58px;line-height:1.4}
+.meta-grid{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:12px}
+.meta-grid span{color:var(--muted)}
+.meta-grid b{font-family:var(--font-mono);font-weight:400;font-size:11px;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.actions{display:flex;gap:6px;flex-wrap:wrap}
+.actions .btn{flex:1;padding:0 8px}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:12px;color:var(--muted);align-items:center}
+kbd{font-family:var(--font-mono);font-size:10.5px;background:var(--panel-2);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:2px 6px;color:var(--fg);justify-self:start;white-space:nowrap}
+.lede{font-size:12.5px;line-height:1.5;color:var(--muted);margin:0;max-width:60ch}
+
+/* timeline */
+.tl-bar{display:flex;align-items:center;gap:6px;padding:7px 10px;border-bottom:1px solid var(--line);flex-wrap:wrap;flex:none}
+.tl-bar .sep{width:1px;height:20px;background:var(--line);margin:0 4px}
+.tl-bar .zoom{display:flex;align-items:center;gap:6px;margin-left:auto;color:var(--muted);font-size:12px}
+.tl-bar .zoom input{width:120px}
+.tl-scroll{flex:1;overflow:auto;position:relative;min-height:0;overscroll-behavior:contain}
+.tl-inner{position:relative;min-width:100%}
+.row{display:flex;height:50px;border-bottom:1px solid var(--line)}
+.row.audio{height:54px}
+.head{position:sticky;left:0;z-index:3;width:124px;flex:none;background:var(--panel-2);border-right:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:6px;padding:0 6px 0 10px}
+.tname{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row.audio .tname::before{content:"";display:inline-block;width:7px;height:7px;border-radius:2px;background:var(--clip-audio);margin-right:6px;vertical-align:1px}
+.row.visual .tname::before{content:"";display:inline-block;width:7px;height:7px;border-radius:2px;background:var(--clip-video);margin-right:6px;vertical-align:1px}
+.tbtn{width:26px;height:26px;display:grid;place-items:center;border-radius:5px;border:1px solid transparent;background:transparent;cursor:pointer;color:var(--muted);flex:none}
+.tbtn:hover{border-color:var(--line-strong);color:var(--fg)}
+.tbtn.off{color:var(--danger)}
+.row.is-off .lane{opacity:.45}
+.lane{position:relative;flex:none;background:var(--panel)}
+.ruler{position:sticky;top:0;z-index:4;height:28px;background:var(--panel)}
+.ruler .head{z-index:5;background:var(--panel);font-family:var(--font-mono);font-size:10.5px;color:var(--accent);font-variant-numeric:tabular-nums}
+.ruler .lane{cursor:ew-resize;touch-action:none;background:
+  repeating-linear-gradient(90deg,var(--line) 0 1px,transparent 1px var(--minor,14px)) left bottom/100% 6px no-repeat,var(--panel)}
+.tick{position:absolute;bottom:0;height:100%;border-left:1px solid var(--line-strong);padding:3px 0 0 4px;font-family:var(--font-mono);font-size:10px;color:var(--muted);white-space:nowrap;pointer-events:none}
+.ph-knob{position:absolute;top:0;bottom:0;width:0;pointer-events:none;z-index:2}
+.ph-knob::before{content:"";position:absolute;left:-6px;bottom:0;width:12px;height:12px;background:var(--accent);clip-path:polygon(0 0,100% 0,100% 55%,50% 100%,0 55%)}
+.playhead{position:absolute;top:0;bottom:0;left:0;width:0;border-left:2px solid var(--accent);z-index:2;pointer-events:none;margin-left:-1px}
+
+.clip{position:absolute;top:4px;bottom:4px;border-radius:5px;background-color:var(--c);background-repeat:repeat-x;background-size:auto 100%;overflow:hidden;cursor:grab;color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);touch-action:none;user-select:none;-webkit-user-select:none}
+.clip.video{--c:var(--clip-video)}
+.clip.image{--c:var(--clip-image)}
+.clip.text{--c:var(--clip-text)}
+.clip.gen{--c:var(--clip-gen)}
+.clip.audio{--c:var(--clip-audio)}
+.clip::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35),transparent 55%);pointer-events:none}
+.clip.video::after,.clip.image::after{background:linear-gradient(180deg,rgba(0,0,0,.6),rgba(0,0,0,.15) 60%)}
+.clip.sel{box-shadow:inset 0 0 0 2px var(--accent),0 0 0 1px var(--accent)}
+.clip.dragging{cursor:grabbing;opacity:.9;z-index:2}
+.clip .lbl{position:absolute;left:9px;top:5px;right:9px;font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:1;text-shadow:0 1px 2px rgba(0,0,0,.5);pointer-events:none}
+.clip .wave{position:absolute;left:0;bottom:0;pointer-events:none;opacity:.85}
+.clip .h{position:absolute;top:0;bottom:0;width:9px;cursor:ew-resize;z-index:2}
+.clip .h-l{left:0}.clip .h-r{right:0}
+.clip .h::before{content:"";position:absolute;top:30%;bottom:30%;left:3px;width:3px;border-radius:2px;background:rgba(255,255,255,.75);opacity:0;transition:opacity .12s}
+.clip:hover .h::before,.clip.sel .h::before{opacity:1}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.clip.shake{animation:shake .25s 2}
+
+/* modal + toast */
+.modal{position:fixed;inset:0;z-index:50;background:rgba(6,7,10,.72);display:grid;place-items:center;padding:16px}
+.sheet{width:min(560px,100%);max-height:100%;overflow:auto;background:var(--panel);border:1px solid var(--line-strong);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.sheet h3{margin:0;font-family:var(--font-display);font-weight:800;font-size:22px;letter-spacing:-.01em}
+.bar{height:6px;border-radius:3px;background:var(--panel-3);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s linear}
+.muted{color:var(--muted);margin:0;font-size:12.5px}
+.mono{font-family:var(--font-mono);font-size:11.5px}
+.note{margin:0;font-size:12.5px;line-height:1.5;padding:10px 12px;border-radius:6px;background:color-mix(in srgb,var(--accent) 10%,var(--panel-2));border:1px solid color-mix(in srgb,var(--accent) 35%,transparent)}
+#exVideo{width:100%;max-height:50vh;background:#000;border-radius:6px}
+.row-btns{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;background:var(--panel-3);border:1px solid var(--line-strong);color:var(--fg);padding:9px 14px;border-radius:8px;font-size:12.5px;box-shadow:0 8px 24px rgba(0,0,0,.4);max-width:calc(100% - 32px)}
+#mediaPool{position:fixed;left:0;bottom:0;width:2px;height:2px;overflow:hidden;opacity:0;pointer-events:none}
+#mediaPool video,#mediaPool audio{width:2px;height:2px}
+
+@media (max-width:900px){
+  html,body{height:auto;overflow:auto}
+  .app{height:auto;display:flex;flex-direction:column}
+  .work{grid-template-columns:minmax(0,1fr)}
+  .stage{order:-1}
+  .stage-view{height:clamp(240px,62vw,60vh);flex:none}
+  .timeline{height:340px;flex:none}
+  .insp-body{max-height:none}
+  .local{display:none}
+  .tl-bar .zoom{margin-left:0}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+[hidden]{display:none!important}
+body{margin:0}
+.cstatus{color:var(--muted);font-size:12px;white-space:nowrap}
+.gbtn{background:#fff;color:#1f1f1f;border-color:#dadce0}
+.gbtn:hover:not(:disabled){background:#eef0f3;border-color:#c8ccd2}
+.acct{position:relative}
+.acct summary{list-style:none;cursor:pointer;border-radius:50%;display:block}
+.acct summary::-webkit-details-marker{display:none}
+.avatar{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--clip-text) center/cover no-repeat;color:#fff;font-weight:600;font-size:13px;border:1px solid var(--line-strong)}
+.acct-menu{position:absolute;right:0;top:40px;z-index:40;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px;width:240px;max-width:calc(100vw - 32px);box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.acct-menu span{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.backup{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);cursor:pointer;line-height:1.35}
+.cstat{align-self:flex-start;margin-top:4px;font-size:10.5px;line-height:1;padding:3px 6px;border-radius:4px;border:1px solid var(--line-strong);background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap;font-family:var(--font-ui)}
+button.cstat:hover{color:var(--accent);border-color:var(--accent)}
+.cstat.ok{color:var(--clip-audio);border-color:color-mix(in srgb,var(--clip-audio) 55%,transparent);cursor:default}
+.cstat.busy{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent);cursor:default;font-variant-numeric:tabular-nums}
+.cstat.err{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 55%,transparent)}
+.jobs{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:45;width:min(320px,calc(100vw - 32px));display:flex;flex-direction:column;gap:8px}
+.job{background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:7px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.jrow{display:flex;justify-content:space-between;gap:10px;font-size:12px}
+.jl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.jp{font-family:var(--font-mono);font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.prow{grid-template-columns:minmax(0,1fr) auto auto}
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <header class="top">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="2" y="3" width="14" height="4" rx="1.5" fill="#7b55b3"/><rect x="5" y="9" width="15" height="4" rx="1.5" fill="#3a679f"/><rect x="2" y="15" width="12" height="4" rx="1.5" fill="#3a8a5e"/><rect x="10" y="1" width="2" height="20" rx="1" fill="#f0b13e"/></svg>
+      Layerline
+    </div>
+    <input class="proj" id="projName" type="text" value="Untitled project" aria-label="Project name">
+    <div class="spacer"></div>
+    <span class="cstatus" id="cloudStatus" hidden role="status"></span>
+    <button class="btn icon" id="undoBtn" title="Undo (Ctrl+Z)" aria-label="Undo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+    <button class="btn icon" id="redoBtn" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
+    <select id="aspect" aria-label="Video format">
+      <option value="16:9">16:9 Landscape</option>
+      <option value="9:16">9:16 Vertical (Reels, Shorts, TikTok)</option>
+      <option value="1:1">1:1 Square</option>
+    </select>
+    <button class="btn" id="projectsBtn">Projects</button>
+    <button class="btn" id="saveBtn" title="Save project to Google Drive (Ctrl+S)">Save to Drive</button>
+    <button class="btn primary" id="exportBtn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>
+      Export video
+    </button>
+    <button class="btn gbtn" id="signInBtn">
+      <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Sign in with Google
+    </button>
+    <details class="acct" id="acct" hidden>
+      <summary id="acctSum" aria-label="Account"><span class="avatar" id="acctAvatar"></span></summary>
+      <div class="acct-menu"><span id="acctEmail"></span><button class="btn" id="signOutBtn">Sign out</button></div>
+    </details>
+  </header>
+
+  <main class="work">
+    <section class="panel bin" aria-label="Media">
+      <div class="panel-h">Media</div>
+      <div class="bin-body" id="binBody">
+        <label class="drop" id="dropZone" for="fileIn">
+          <input type="file" id="fileIn" multiple accept="video/*,audio/*,image/*" hidden>
+          <strong>Import media</strong>
+          <span>or drop video, audio and images here</span>
+        </label>
+        <button class="btn drive-btn" id="driveBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.2 3h7.6l6.2 10.8-3.8 6.6H5.8L2 13.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.2 3l5.9 10.8H22M15.8 3L9.7 13.8 5.8 20.4M2 13.8h12.1" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" opacity=".6"/></svg>
+          Add from Google Drive
+        </button>
+        <label class="backup" for="backupChk"><input type="checkbox" id="backupChk" checked> Back up imported files to Google Drive</label>
+        <ul class="mlist" id="mediaList"></ul>
+        <p class="hint" id="binHint">The project below is an example built from text and generators. Import clips or add them from Drive, then drag them onto any track.</p>
+        <h3 class="sub">Add to timeline</h3>
+        <div class="gen-grid">
+          <button class="btn" data-add="text"><span class="swatch" style="background:var(--clip-text)"></span>Text</button>
+          <button class="btn" data-add="gradient"><span class="swatch" style="background:var(--clip-gen)"></span>Gradient</button>
+          <button class="btn" data-add="bars"><span class="swatch" style="background:var(--clip-gen)"></span>Audio bars</button>
+          <button class="btn" data-add="solid"><span class="swatch" style="background:var(--clip-gen)"></span>Solid color</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel stage" aria-label="Preview">
+      <div class="stage-view" id="stageView"><canvas id="stage" width="1280" height="720" aria-label="Video preview"></canvas></div>
+      <div class="transport">
+        <button class="btn icon" id="toStart" title="Go to start (Home)" aria-label="Go to start"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="5" width="2.5" height="14" rx="1"/><path d="M20 5v14L8 12z"/></svg></button>
+        <button class="btn icon" id="stepBack" title="Back one frame (←)" aria-label="Back one frame"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M15 5v14L5 12z"/><rect x="17" y="5" width="2.5" height="14" rx="1"/></svg></button>
+        <button class="btn icon play" id="playBtn" title="Play (Space)" aria-label="Play"></button>
+        <button class="btn icon" id="stepFwd" title="Forward one frame (→)" aria-label="Forward one frame"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M9 5v14l10-7z"/><rect x="4.5" y="5" width="2.5" height="14" rx="1"/></svg></button>
+        <div class="tc"><b id="tcNow">00:00:00:00</b> / <span id="tcEnd">00:00:00:00</span></div>
+      </div>
+    </section>
+
+    <section class="panel insp" aria-label="Inspector">
+      <div class="panel-h" id="inspTitle">Project</div>
+      <div class="insp-body" id="inspBody"></div>
+    </section>
+  </main>
+
+  <section class="panel timeline" aria-label="Timeline">
+    <div class="tl-bar">
+      <button class="btn" id="splitBtn" title="Split at playhead (S)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></svg>Split</button>
+      <button class="btn" id="dupBtn" title="Duplicate (Ctrl+D)">Duplicate</button>
+      <button class="btn danger" id="delBtn" title="Delete (Del)">Delete</button>
+      <span class="sep"></span>
+      <button class="btn" id="addVTrack">+ Video track</button>
+      <button class="btn" id="addATrack">+ Audio track</button>
+      <button class="btn" id="snapBtn" aria-pressed="true" title="Snap clips to edges and playhead">Snap</button>
+      <label class="zoom" for="zoom">Zoom <input type="range" id="zoom" min="12" max="300" value="70"></label>
+    </div>
+    <div class="tl-scroll" id="tlScroll"><div class="tl-inner" id="tlInner"></div></div>
+  </section>
+</div>
+
+<div id="mediaPool" aria-hidden="true"></div>
+
+<div class="modal" id="exportModal" hidden role="dialog" aria-modal="true" aria-labelledby="exTitle">
+  <div class="sheet">
+    <h3 id="exTitle">Exporting</h3>
+    <div id="exProgress" style="display:flex;flex-direction:column;gap:10px">
+      <div class="bar"><i id="exBar"></i></div>
+      <p class="muted"><span id="exStatus">Rendering in real time. Keep this tab open.</span> <span class="mono" id="exTime"></span></p>
+      <div class="row-btns"><button class="btn" id="exCancel">Cancel</button></div>
+    </div>
+    <div id="exDone" hidden style="display:flex;flex-direction:column;gap:12px">
+      <video id="exVideo" controls playsinline></video>
+      <p class="muted mono" id="exMeta"></p>
+      <div class="row-btns"><button class="btn" id="exClose">Close</button><button class="btn" id="exDrive">Save to Drive</button><button class="btn primary" id="exSave">Download</button></div>
+    </div>
+  </div>
+</div>
+<div class="modal" id="projModal" hidden role="dialog" aria-modal="true" aria-labelledby="pTitle">
+  <div class="sheet">
+    <h3 id="pTitle">Your projects</h3>
+    <p class="muted">Projects and their media live in the Layerline folder of your Google Drive. Starting a new project clears the editor, so save first if you want to keep your changes.</p>
+    <ul class="dlist" id="pList"></ul>
+    <div class="row-btns"><button class="btn" id="pNew">New project</button><button class="btn" id="pClose">Close</button></div>
+  </div>
+</div>
+<div class="jobs" id="jobs" hidden aria-live="polite"></div>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script src="config.js"></script>
+<script>
+(() => {
+'use strict';
+const FPS = 30, HEAD_W = 124, PEAKS_PER_SEC = 50;
+const ASPECTS = { '16:9': [1280, 720], '9:16': [720, 1280], '1:1': [1080, 1080] };
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const pad = n => String(n).padStart(2, '0');
+function tc(t) { const f = Math.max(0, Math.round(t * FPS)); const ff = f % FPS; const s = Math.floor(f / FPS); return `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}:${pad(ff)}`; }
+function fmtDur(t) { t = Math.max(0, t || 0); return `${Math.floor(t / 60)}:${pad(Math.floor(t % 60))}`; }
+function fmtRuler(t) { const m = Math.floor(t / 60); const s = t - m * 60; const whole = Math.floor(s + 1e-6); return (s - whole > 0.01) ? `${m}:${pad(whole)}.5` : `${m}:${pad(whole)}`; }
+
+const canvas = $('#stage'), ctx = canvas.getContext('2d');
+const stageView = $('#stageView'), tlScroll = $('#tlScroll'), inner = $('#tlInner'), pool = $('#mediaPool');
+let W = 1280, H = 720;
+const state = { aspect: '16:9', tracks: [], clips: [], selected: null, pps: 70, time: 0, playing: false, snap: true };
+const media = new Map(), els = new Map(), nodes = new Map();
+let uid = 1; const nid = p => `${p}${uid++}`;
+let audioCtx = null, master = null, analyser = null, freq = null;
+let playheadEl = null, knobEl = null;
+
+/* ---------- model helpers ---------- */
+const clipById = id => state.clips.find(c => c.id === id);
+const trackById = id => state.tracks.find(t => t.id === id);
+const kindOf = c => c.type === 'audio' ? 'audio' : 'visual';
+const isMediaClip = c => c.type === 'video' || c.type === 'audio';
+function projectEnd() { let e = 0; for (const c of state.clips) e = Math.max(e, c.start + c.dur); return e; }
+function defaultProps(type, gen) {
+  const p = { x: 0, y: 0, scale: 1, rotation: 0, opacity: 1, fadeIn: 0, fadeOut: 0, volume: 1 };
+  if (type === 'text') Object.assign(p, { text: 'Your title', font: 'display', weight: 800, size: 110, color: '#ffffff', shadow: true });
+  if (type === 'gen') {
+    p.gen = gen;
+    if (gen === 'gradient') Object.assign(p, { colorA: '#23315f', colorB: '#e98a4f', speed: 1 });
+    if (gen === 'bars') Object.assign(p, { color: '#ffffff', count: 32 });
+    if (gen === 'solid') p.color = '#20242c';
+  }
+  return p;
+}
+const GEN_NAMES = { gradient: 'Gradient', bars: 'Audio bars', solid: 'Solid color' };
+function clipName(c) {
+  if (c.type === 'text') return (String(c.props.text).split('\n')[0] || 'Text').trim() || 'Text';
+  if (c.type === 'gen') return GEN_NAMES[c.props.gen] || 'Generator';
+  const m = media.get(c.mediaId); return m ? m.name : 'Missing media';
+}
+function overlaps(c) {
+  return state.clips.some(o => o.id !== c.id && o.trackId === c.trackId && o.start < c.start + c.dur - 1e-6 && c.start < o.start + o.dur - 1e-6);
+}
+function findFreeStart(trackId, start, dur, ignoreId) {
+  let s = Math.max(0, start);
+  for (let guard = 0; guard < 500; guard++) {
+    const hits = state.clips.filter(o => o.id !== ignoreId && o.trackId === trackId && o.start < s + dur - 1e-6 && s < o.start + o.dur - 1e-6);
+    if (!hits.length) return s;
+    s = Math.max(...hits.map(o => o.start + o.dur));
+  }
+  return s;
+}
+function defaultTrack(kind, prefer) {
+  const list = state.tracks.filter(t => t.kind === kind);
+  if (!list.length) return null;
+  return prefer === 'top' ? list[0] : (kind === 'visual' ? list[list.length - 1] : list[0]);
+}
+function fadeFactor(c, t) {
+  const p = c.props; let f = 1;
+  if (p.fadeIn > 0) f = Math.min(f, (t - c.start) / p.fadeIn);
+  if (p.fadeOut > 0) f = Math.min(f, (c.start + c.dur - t) / p.fadeOut);
+  return clamp(f, 0, 1);
+}
+
+/* ---------- history ---------- */
+const undoStack = [], redoStack = [];
+const snapshot = () => JSON.stringify({ tracks: state.tracks, clips: state.clips, aspect: state.aspect });
+function pushHistory(snap) { dirty = true; undoStack.push(snap || snapshot()); if (undoStack.length > 150) undoStack.shift(); redoStack.length = 0; updateUndo(); }
+function restore(s) {
+  const o = JSON.parse(s); state.tracks = o.tracks; state.clips = o.clips;
+  if (o.aspect !== state.aspect) setAspect(o.aspect);
+  reconcileEls();
+  if (!clipById(state.selected)) state.selected = null;
+  renderTimeline(); renderInspector();
+}
+function undo() { if (!undoStack.length) return; redoStack.push(snapshot()); restore(undoStack.pop()); updateUndo(); }
+function redo() { if (!redoStack.length) return; undoStack.push(snapshot()); restore(redoStack.pop()); updateUndo(); }
+function updateUndo() { $('#undoBtn').disabled = !undoStack.length; $('#redoBtn').disabled = !redoStack.length; }
+let editSnap = null;
+function beginEdit() { if (!editSnap) { editSnap = snapshot(); pushHistory(editSnap); } }
+function endEdit() { editSnap = null; }
+
+/* ---------- audio graph ---------- */
+function ensureAudio() {
+  if (audioCtx) { if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {}); return; }
+  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+  try {
+    audioCtx = new AC();
+    master = audioCtx.createGain();
+    analyser = audioCtx.createAnalyser(); analyser.fftSize = 256; analyser.smoothingTimeConstant = 0.8;
+    freq = new Uint8Array(analyser.frequencyBinCount);
+    master.connect(analyser); analyser.connect(audioCtx.destination);
+    for (const [id, el] of els) connectEl(id, el);
+  } catch (e) { audioCtx = null; }
+}
+function connectEl(id, el) {
+  if (!audioCtx || nodes.has(id)) return;
+  try { const src = audioCtx.createMediaElementSource(el); const g = audioCtx.createGain(); src.connect(g); g.connect(master); el.volume = 1; nodes.set(id, { src, g }); } catch (e) {}
+}
+function ensureEl(c) {
+  let el = els.get(c.id); if (el) return el;
+  const m = media.get(c.mediaId); if (!m) return null;
+  el = document.createElement(c.type === 'video' ? 'video' : 'audio');
+  el.preload = 'auto'; el.playsInline = true; el.setAttribute('playsinline', '');
+  el.src = m.url; pool.appendChild(el); els.set(c.id, el); connectEl(c.id, el);
+  return el;
+}
+function dropEl(id) {
+  const el = els.get(id); if (!el) return;
+  el.pause(); const n = nodes.get(id);
+  if (n) { try { n.src.disconnect(); n.g.disconnect(); } catch (e) {} nodes.delete(id); }
+  el.removeAttribute('src'); try { el.load(); } catch (e) {} el.remove(); els.delete(id);
+}
+function reconcileEls() { const ids = new Set(state.clips.map(c => c.id)); for (const id of [...els.keys()]) if (!ids.has(id)) dropEl(id); }
+
+/* ---------- playback sync + drawing ---------- */
+function sync(t) {
+  for (const c of state.clips) {
+    if (!isMediaClip(c)) continue;
+    const el = ensureEl(c); if (!el) continue;
+    const tr = trackById(c.trackId);
+    const active = t >= c.start && t < c.start + c.dur;
+    if (active) {
+      const target = c.in + (t - c.start);
+      if (state.playing) {
+        if (el.paused) { try { el.currentTime = target; } catch (e) {} const p = el.play(); if (p && p.catch) p.catch(() => {}); }
+        else if (Math.abs(el.currentTime - target) > 0.25) { try { el.currentTime = target; } catch (e) {} }
+      } else {
+        if (!el.paused) el.pause();
+        if (!el.seeking && Math.abs(el.currentTime - target) > 1 / (FPS * 2)) { try { el.currentTime = target; } catch (e) {} }
+      }
+    } else if (!el.paused) el.pause();
+    let vol = (c.props.volume ?? 1) * fadeFactor(c, t);
+    if (tr && tr.off) vol = 0;
+    const n = nodes.get(c.id);
+    if (n) n.g.gain.value = vol; else el.volume = clamp(vol, 0, 1);
+  }
+}
+const FONTS = { display: '"Bricolage Grotesque", Impact, sans-serif', sans: '"Instrument Sans", system-ui, sans-serif', serif: 'Georgia, "Times New Roman", serif', mono: '"Martian Mono", ui-monospace, monospace' };
+function drawContain(src, sw, sh) {
+  if (!sw || !sh) return;
+  const r = Math.min(W / sw, H / sh), dw = sw * r, dh = sh * r;
+  ctx.drawImage(src, -dw / 2, -dh / 2, dw, dh);
+}
+function drawClip(c, t) {
+  const p = c.props;
+  const a = clamp(p.opacity, 0, 1) * fadeFactor(c, t);
+  if (a <= 0.001) return;
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.translate(W / 2 + p.x * W, H / 2 + p.y * H);
+  if (p.rotation) ctx.rotate(p.rotation * Math.PI / 180);
+  if (p.scale !== 1) ctx.scale(p.scale, p.scale);
+  if (c.type === 'video') {
+    const el = els.get(c.id);
+    if (el && el.readyState >= 2) drawContain(el, el.videoWidth, el.videoHeight);
+  } else if (c.type === 'image') {
+    const m = media.get(c.mediaId);
+    if (m && m.img && m.img.complete) drawContain(m.img, m.w, m.h);
+  } else if (c.type === 'text') {
+    ctx.font = `${p.weight} ${p.size}px ${FONTS[p.font] || FONTS.sans}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    if (p.shadow) { ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = p.size * 0.22; ctx.shadowOffsetY = p.size * 0.04; }
+    ctx.fillStyle = p.color;
+    const lines = String(p.text).split('\n'); const lh = p.size * 1.08; const total = lh * lines.length;
+    lines.forEach((l, i) => ctx.fillText(l, 0, -total / 2 + lh * (i + 0.5)));
+  } else if (c.type === 'gen') {
+    const local = t - c.start;
+    if (p.gen === 'solid') { ctx.fillStyle = p.color; ctx.fillRect(-W / 2, -H / 2, W, H); }
+    else if (p.gen === 'gradient') {
+      const ang = local * p.speed * 0.5 + 0.6, r = Math.hypot(W, H) / 2;
+      const g = ctx.createLinearGradient(-Math.cos(ang) * r, -Math.sin(ang) * r, Math.cos(ang) * r, Math.sin(ang) * r);
+      g.addColorStop(0, p.colorA); g.addColorStop(1, p.colorB);
+      ctx.fillStyle = g; ctx.fillRect(-W / 2, -H / 2, W, H);
+    } else if (p.gen === 'bars') {
+      const n = Math.round(p.count), span = Math.min(W, H * 1.6) * 0.8, bw = span / n, maxH = Math.min(W, H) * 0.42;
+      let live = null;
+      if (analyser && state.playing) { analyser.getByteFrequencyData(freq); let sum = 0; for (let i = 0; i < freq.length; i++) sum += freq[i]; if (sum > 50) live = freq; }
+      ctx.fillStyle = p.color;
+      for (let i = 0; i < n; i++) {
+        let v;
+        if (live) { const idx = Math.min(live.length - 1, Math.floor(Math.pow(i / n, 1.5) * live.length * 0.75)); v = live[idx] / 255; }
+        else v = 0.18 + 0.62 * Math.abs(Math.sin(local * (1.6 + (i % 7) * 0.21) + i * 1.37)) * (0.65 + 0.35 * Math.sin(local * 0.8 + i * 0.5));
+        const h = Math.max(maxH * 0.04, clamp(v, 0, 1) * maxH);
+        const x = -span / 2 + i * bw + bw * 0.18, w = bw * 0.64, y = maxH / 2 - h;
+        if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, w, h, Math.min(w / 2, 6)); ctx.fill(); } else ctx.fillRect(x, y, w, h);
+      }
+    }
+  }
+  ctx.restore();
+}
+function draw(t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+  const vis = state.tracks.filter(k => k.kind === 'visual' && !k.off);
+  for (let i = vis.length - 1; i >= 0; i--) {
+    const tr = vis[i];
+    for (const c of state.clips) if (c.trackId === tr.id && t >= c.start && t < c.start + c.dur) drawClip(c, t);
+  }
+}
+
+/* ---------- transport ---------- */
+const ICON_PLAY = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>';
+const ICON_PAUSE = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4.5" width="4" height="15" rx="1"/><rect x="14" y="4.5" width="4" height="15" rx="1"/></svg>';
+let lastTs = null, exporting = false;
+function play(fromExport) {
+  ensureAudio();
+  const end = projectEnd();
+  if (!fromExport && state.time >= end - 1e-3) state.time = 0;
+  state.playing = true; lastTs = null; updatePlayBtn();
+}
+function pause() { state.playing = false; for (const el of els.values()) el.pause(); updatePlayBtn(); }
+function togglePlay() { if (exporting) return; state.playing ? pause() : play(); }
+function seek(t) { state.time = Math.max(0, t); if (state.playing) for (const el of els.values()) el.pause(); updatePlayhead(); }
+function step(n) { pause(); seek(Math.round(state.time * FPS + n) / FPS); }
+function updatePlayBtn() { const b = $('#playBtn'); b.innerHTML = state.playing ? ICON_PAUSE : ICON_PLAY; b.setAttribute('aria-label', state.playing ? 'Pause' : 'Play'); b.title = state.playing ? 'Pause (Space)' : 'Play (Space)'; }
+let lastTcNow = '', lastTcEnd = '';
+function updatePlayhead(follow) {
+  const x = state.time * state.pps;
+  if (playheadEl) playheadEl.style.transform = `translateX(${HEAD_W + x}px)`;
+  if (knobEl) knobEl.style.transform = `translateX(${x}px)`;
+  const now = tc(state.time), end = tc(projectEnd());
+  if (now !== lastTcNow) { $('#tcNow').textContent = now; const s = $('#tcSmall'); if (s) s.textContent = now; lastTcNow = now; }
+  if (end !== lastTcEnd) { $('#tcEnd').textContent = end; lastTcEnd = end; }
+  if (follow) {
+    const left = tlScroll.scrollLeft, viewW = tlScroll.clientWidth - HEAD_W;
+    if (x < left || x > left + viewW - 30) tlScroll.scrollLeft = Math.max(0, x - 40);
+  }
+}
+function frame(ts) {
+  if (state.playing) {
+    if (lastTs != null) state.time += Math.min(0.25, (ts - lastTs) / 1000);
+    const end = projectEnd();
+    if (state.time >= end) {
+      state.time = end;
+      if (exporting) finishExport(); else pause();
+    }
+  }
+  lastTs = ts;
+  sync(state.time);
+  draw(state.time);
+  updatePlayhead(state.playing);
+  if (exporting) { const end = projectEnd() || 1; $('#exBar').style.width = `${clamp(state.time / end, 0, 1) * 100}%`; $('#exTime').textContent = `${tc(state.time)} / ${tc(end)}`; }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- aspect + canvas fit ---------- */
+function setAspect(a) {
+  state.aspect = a; [W, H] = ASPECTS[a]; canvas.width = W; canvas.height = H;
+  $('#aspect').value = a; fitCanvas();
+}
+function fitCanvas() {
+  const r = stageView.getBoundingClientRect();
+  const aw = Math.max(40, r.width - 24), ah = Math.max(40, r.height - 24);
+  const s = Math.min(aw / W, ah / H);
+  canvas.style.width = `${Math.floor(W * s)}px`; canvas.style.height = `${Math.floor(H * s)}px`;
+}
+
+/* ---------- import ---------- */
+function loadEl(type, url) {
+  return new Promise((res, rej) => {
+    const el = document.createElement(type); el.preload = 'metadata'; el.muted = true; el.playsInline = true;
+    const to = setTimeout(() => rej(new Error('timeout')), 15000);
+    el.onloadedmetadata = () => { clearTimeout(to); res(el); };
+    el.onerror = () => { clearTimeout(to); rej(new Error('load')); };
+    el.src = url;
+  });
+}
+function readDataURL(file) { return new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(file); }); }
+function loadImg(url) { return new Promise((res, rej) => { const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = url; }); }
+async function importFile(file, opts = {}) {
+  const type = file.type.startsWith('video') ? 'video' : file.type.startsWith('audio') ? 'audio' : file.type.startsWith('image') ? 'image' : null;
+  if (!type) { toast(`${file.name} isn't a video, audio or image file.`); return null; }
+  const m = { id: opts.id || nid('m'), name: file.name, type, url: '', duration: 0, w: 0, h: 0, peaks: null, thumb: null, img: null, file, driveId: opts.driveId || null, cloud: opts.driveId ? 'saved' : 'local', progress: 0 };
+  try {
+    let url = URL.createObjectURL(file);
+    if (type === 'image') {
+      let img; try { img = await loadImg(url); } catch (e) { url = await readDataURL(file); img = await loadImg(url); }
+      m.img = img; m.w = img.naturalWidth; m.h = img.naturalHeight; m.thumb = makeThumb(img, m.w, m.h);
+    } else {
+      let el; try { el = await loadEl(type, url); } catch (e) { url = await readDataURL(file); el = await loadEl(type, url); }
+      m.duration = isFinite(el.duration) && el.duration > 0 ? el.duration : 10;
+      if (type === 'video') {
+        m.w = el.videoWidth; m.h = el.videoHeight;
+        try {
+          await new Promise(r => { el.onseeked = r; el.currentTime = Math.min(1, m.duration * 0.1); setTimeout(r, 2500); });
+          m.thumb = makeThumb(el, m.w, m.h);
+        } catch (e) {}
+      }
+      el.removeAttribute('src');
+    }
+    m.url = url;
+  } catch (e) {
+    toast(`Couldn't open ${file.name}. Try MP4 (H.264), WebM, MP3, WAV, JPG or PNG.`);
+    return null;
+  }
+  media.set(m.id, m); dirty = true; renderBin();
+  if (type !== 'image') computePeaks(file, m);
+  if (!m.driveId && cloud.backup && cloud.user) queueBackup(m);
+  return m;
+}
+function makeThumb(src, w, h) {
+  try {
+    const c = document.createElement('canvas'); c.width = 160; c.height = 90;
+    const g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, 160, 90);
+    const r = Math.max(160 / w, 90 / h); const dw = w * r, dh = h * r;
+    g.drawImage(src, (160 - dw) / 2, (90 - dh) / 2, dw, dh);
+    return c.toDataURL('image/jpeg', 0.7);
+  } catch (e) { return null; }
+}
+async function computePeaks(file, m) {
+  if (file.size > 400e6) return;
+  try {
+    const buf = await file.arrayBuffer();
+    const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext; if (!OAC) return;
+    const off = new OAC(1, 44100, 44100);
+    const ab = await off.decodeAudioData(buf);
+    const ch = ab.getChannelData(0); const per = Math.max(1, Math.floor(ab.sampleRate / PEAKS_PER_SEC));
+    const n = Math.ceil(ch.length / per); const peaks = new Float32Array(n); let max = 0;
+    for (let i = 0; i < n; i++) { let pk = 0; const e = Math.min(ch.length, (i + 1) * per); for (let j = i * per; j < e; j += 4) { const v = Math.abs(ch[j]); if (v > pk) pk = v; } peaks[i] = pk; if (pk > max) max = pk; }
+    if (max > 0) for (let i = 0; i < n; i++) peaks[i] /= max;
+    m.peaks = peaks; renderTimeline();
+  } catch (e) { /* no audio track or undecodable: skip waveform */ }
+}
+async function importFiles(files) {
+  const out = [];
+  for (const f of files) { const m = await importFile(f); if (m) out.push(m); }
+  if (out.length) toast(out.length === 1 ? `Imported ${out[0].name}` : `Imported ${out.length} files`);
+  return out;
+}
+
+/* ---------- clip creation + editing ---------- */
+function placeMedia(m, trackId, t) {
+  const kind = m.type === 'audio' ? 'audio' : 'visual';
+  let tr = trackById(trackId);
+  if (!tr || tr.kind !== kind) tr = defaultTrack(kind);
+  if (!tr) { toast(`Add a ${kind === 'audio' ? 'audio' : 'video'} track first.`); return null; }
+  const dur = m.type === 'image' ? 5 : m.duration;
+  pushHistory();
+  const c = { id: nid('c'), trackId: tr.id, type: m.type, mediaId: m.id, start: findFreeStart(tr.id, t, dur), dur, in: 0, props: defaultProps(m.type) };
+  state.clips.push(c); renderTimeline(); select(c.id);
+  return c;
+}
+function addGenerated(kind) {
+  const isText = kind === 'text';
+  const tr = defaultTrack('visual', isText ? 'top' : 'bottom');
+  if (!tr) { toast('Add a video track first.'); return; }
+  const dur = isText ? 4 : 6;
+  pushHistory();
+  const c = { id: nid('c'), trackId: tr.id, type: isText ? 'text' : 'gen', start: findFreeStart(tr.id, state.time, dur), dur, in: 0, props: defaultProps(isText ? 'text' : 'gen', kind) };
+  state.clips.push(c); renderTimeline(); select(c.id);
+}
+function splitSelected() {
+  let c = clipById(state.selected);
+  if (!c || !(state.time > c.start + 1 / FPS && state.time < c.start + c.dur - 1 / FPS)) {
+    c = state.clips.find(k => state.time > k.start + 1 / FPS && state.time < k.start + k.dur - 1 / FPS && (!state.selected || k.id === state.selected));
+  }
+  if (!c) { toast('Move the playhead over a clip to split it.'); return; }
+  pushHistory();
+  const cut = Math.round(state.time * FPS) / FPS; const leftDur = cut - c.start;
+  const right = JSON.parse(JSON.stringify(c));
+  right.id = nid('c'); right.start = cut; right.dur = c.dur - leftDur; right.in = c.in + leftDur; right.props.fadeIn = 0;
+  c.dur = leftDur; c.props.fadeOut = 0;
+  state.clips.push(right); renderTimeline(); select(right.id);
+}
+function duplicateSelected() {
+  const c = clipById(state.selected); if (!c) { toast('Select a clip to duplicate.'); return; }
+  pushHistory();
+  const d = JSON.parse(JSON.stringify(c)); d.id = nid('c'); d.start = findFreeStart(c.trackId, c.start + c.dur, c.dur);
+  state.clips.push(d); renderTimeline(); select(d.id);
+}
+function deleteSelected() {
+  const c = clipById(state.selected); if (!c) return;
+  pushHistory(); state.clips = state.clips.filter(k => k.id !== c.id); dropEl(c.id);
+  state.selected = null; renderTimeline(); renderInspector();
+}
+function addTrack(kind) {
+  pushHistory();
+  const n = state.tracks.filter(t => t.kind === kind).length + 1;
+  const tr = { id: nid('t'), name: `${kind === 'audio' ? 'Audio' : 'Video'} ${n}`, kind, off: false };
+  if (kind === 'visual') { const i = state.tracks.findIndex(t => t.kind === 'visual'); state.tracks.splice(i < 0 ? 0 : i, 0, tr); }
+  else state.tracks.push(tr);
+  renderTimeline();
+}
+
+/* ---------- selection ---------- */
+function select(id) {
+  state.selected = id;
+  inner.querySelectorAll('.clip.sel').forEach(e => e.classList.remove('sel'));
+  if (id) { const e = inner.querySelector(`.clip[data-id="${id}"]`); if (e) e.classList.add('sel'); }
+  renderInspector();
+}
+
+/* ---------- bin ---------- */
+const TYPE_LABEL = { video: 'Video', audio: 'Audio', image: 'Image' };
+const ICON_NOTE = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>';
+function renderBin() {
+  const list = $('#mediaList');
+  list.innerHTML = [...media.values()].map(m => `
+    <li class="mitem" draggable="true" data-media="${m.id}" title="Drag onto a track, or press + to add at the playhead">
+      <div class="mthumb" style="${m.thumb ? `background-image:url(${m.thumb})` : ''}">${m.thumb ? '' : ICON_NOTE}</div>
+      <div class="minfo"><span class="mname">${esc(m.name)}</span><span class="mmeta">${TYPE_LABEL[m.type]}${m.type !== 'image' ? ' · ' + fmtDur(m.duration) : ''}</span>${cloudChip(m)}</div>
+      <button class="madd" data-addmedia="${m.id}" aria-label="Add ${esc(m.name)} to timeline">+</button>
+    </li>`).join('');
+  $('#binHint').textContent = media.size
+    ? 'Drag clips onto a track, or press + to drop them at the playhead.'
+    : 'The project below is an example built from text and generators. Import clips or add them from Drive, then drag them onto any track.';
+}
+
+/* ---------- timeline ---------- */
+const ICONS = {
+  eye: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  eyeOff: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M3 3l18 18"/></svg>',
+  spk: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>',
+  spkOff: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>'
+};
+function pickStep(pps) { for (const s of [0.5, 1, 2, 5, 10, 15, 30, 60, 120]) if (s * pps >= 64) return s; return 300; }
+function clipHTML(c) {
+  const m = c.mediaId ? media.get(c.mediaId) : null;
+  const bg = m && m.thumb ? `background-image:url(${m.thumb});` : '';
+  const wave = m && m.peaks ? `<canvas class="wave" data-id="${c.id}"></canvas>` : '';
+  return `<div class="clip ${c.type}${state.selected === c.id ? ' sel' : ''}" data-id="${c.id}" style="left:${c.start * state.pps}px;width:${Math.max(4, c.dur * state.pps)}px;${bg}">${wave}<span class="lbl">${esc(clipName(c))}</span><span class="h h-l"></span><span class="h h-r"></span></div>`;
+}
+function renderTimeline() {
+  const pps = state.pps, end = projectEnd();
+  const laneW = Math.max(tlScroll.clientWidth - HEAD_W, Math.ceil((end + 20) * pps));
+  const stepS = pickStep(pps);
+  let ticks = '';
+  for (let s = 0; s * pps <= laneW; s += stepS) ticks += `<span class="tick" style="left:${s * pps}px">${fmtRuler(s)}</span>`;
+  let h = `<div class="row ruler"><div class="head" id="tcSmall">${tc(state.time)}</div><div class="lane" id="rulerLane" style="width:${laneW}px;--minor:${(stepS / 5) * pps}px">${ticks}<div class="ph-knob" id="phKnob"></div></div></div>`;
+  for (const tr of state.tracks) {
+    const icon = tr.kind === 'audio' ? (tr.off ? ICONS.spkOff : ICONS.spk) : (tr.off ? ICONS.eyeOff : ICONS.eye);
+    const lbl = tr.kind === 'audio' ? (tr.off ? 'Unmute' : 'Mute') : (tr.off ? 'Show' : 'Hide');
+    h += `<div class="row ${tr.kind}${tr.off ? ' is-off' : ''}"><div class="head"><span class="tname">${esc(tr.name)}</span><button class="tbtn${tr.off ? ' off' : ''}" data-toggle="${tr.id}" aria-label="${lbl} ${esc(tr.name)}" title="${lbl} track">${icon}</button></div><div class="lane" data-track="${tr.id}" style="width:${laneW}px">`;
+    for (const c of state.clips) if (c.trackId === tr.id) h += clipHTML(c);
+    h += '</div></div>';
+  }
+  h += '<div class="playhead" id="playhead"></div>';
+  inner.innerHTML = h; inner.style.width = `${HEAD_W + laneW}px`;
+  playheadEl = $('#playhead'); knobEl = $('#phKnob'); lastTcNow = '';
+  inner.querySelectorAll('canvas.wave').forEach(drawWave);
+  updatePlayhead(false);
+}
+function drawWave(cv) {
+  const c = clipById(cv.dataset.id); if (!c) return; const m = media.get(c.mediaId); if (!m || !m.peaks) return;
+  const w = Math.max(1, c.dur * state.pps), rowH = cv.parentElement.clientHeight || 42;
+  const h = Math.round(rowH * (c.type === 'audio' ? 0.78 : 0.42));
+  const cw = Math.min(Math.ceil(w), 8000);
+  cv.width = cw; cv.height = h; cv.style.width = `${w}px`; cv.style.height = `${h}px`;
+  const g = cv.getContext('2d'); g.fillStyle = 'rgba(255,255,255,.78)';
+  const k = cw / w;
+  for (let x = 0; x < cw; x++) {
+    const sec = c.in + (x / k) / state.pps; const v = m.peaks[Math.floor(sec * PEAKS_PER_SEC)] || 0;
+    const bh = Math.max(1, v * h * 0.95); g.fillRect(x, (h - bh) / 2, 1, bh);
+  }
+}
+function positionClipEl(el, c) { el.style.left = `${c.start * state.pps}px`; el.style.width = `${Math.max(4, c.dur * state.pps)}px`; }
+function timeFromX(clientX) { const r = $('#rulerLane').getBoundingClientRect(); return Math.max(0, (clientX - r.left) / state.pps); }
+function snapPoints(exId) { const pts = [0, state.time]; for (const k of state.clips) if (k.id !== exId) pts.push(k.start, k.start + k.dur); return pts; }
+function snapVal(v, pts) { if (!state.snap) return { v, hit: false }; const th = 8 / state.pps; let best = v, bd = th, hit = false; for (const p of pts) { const d = Math.abs(p - v); if (d < bd) { bd = d; best = p; hit = true; } } return { v: best, hit }; }
+
+function startClipDrag(e, clipEl) {
+  const c = clipById(clipEl.dataset.id); if (!c) return;
+  e.preventDefault();
+  if (state.selected !== c.id) select(c.id);
+  const mode = e.target.classList.contains('h-l') ? 'l' : e.target.classList.contains('h-r') ? 'r' : 'move';
+  const snap0 = snapshot(); const o = { start: c.start, dur: c.dur, in: c.in, trackId: c.trackId };
+  const x0 = e.clientX; let moved = false; let el = clipEl;
+  const m = c.mediaId ? media.get(c.mediaId) : null;
+  const media_ = isMediaClip(c); const maxLen = media_ && m ? m.duration : Infinity; const minDur = 3 / FPS;
+  const pts = snapPoints(c.id);
+  const onMove = ev => {
+    if (!moved && Math.abs(ev.clientX - x0) < 3 && mode !== 'move') return;
+    if (!moved && Math.abs(ev.clientX - x0) < 3 && Math.abs(ev.clientY - e.clientY) < 6) return;
+    moved = true; el.classList.add('dragging');
+    const dx = (ev.clientX - x0) / state.pps;
+    if (mode === 'move') {
+      let s = Math.max(0, o.start + dx);
+      const a = snapVal(s, pts); if (a.hit) s = a.v; else { const b = snapVal(s + c.dur, pts); if (b.hit) s = b.v - c.dur; }
+      c.start = Math.max(0, s);
+      const under = document.elementFromPoint(ev.clientX, ev.clientY);
+      const lane = under && under.closest('.lane[data-track]');
+      if (lane && lane.dataset.track !== c.trackId) {
+        const tr = trackById(lane.dataset.track);
+        if (tr && tr.kind === kindOf(c)) { c.trackId = tr.id; lane.appendChild(el); }
+      }
+    } else if (mode === 'l') {
+      let s = snapVal(o.start + dx, pts).v;
+      const minS = media_ ? Math.max(0, o.start - o.in) : 0;
+      s = clamp(s, minS, o.start + o.dur - minDur);
+      c.start = s; c.dur = o.dur - (s - o.start); if (media_) c.in = o.in + (s - o.start);
+    } else {
+      let en = snapVal(o.start + o.dur + dx, pts).v;
+      en = clamp(en, o.start + minDur, media_ ? o.start + (maxLen - o.in) : Infinity);
+      c.dur = en - o.start;
+    }
+    positionClipEl(el, c);
+  };
+  const onUp = () => {
+    window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onUp);
+    el.classList.remove('dragging');
+    if (!moved) return;
+    if (overlaps(c)) {
+      Object.assign(c, o); renderTimeline();
+      const e2 = inner.querySelector(`.clip[data-id="${c.id}"]`); if (e2) e2.classList.add('shake');
+      toast('That spot is taken on this track.');
+      return;
+    }
+    pushHistory(snap0); renderTimeline(); renderInspector();
+  };
+  window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp); window.addEventListener('pointercancel', onUp);
+}
+function startScrub(e) {
+  e.preventDefault(); if (state.playing) pause();
+  seek(timeFromX(e.clientX));
+  const onMove = ev => seek(timeFromX(ev.clientX));
+  const onUp = () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); };
+  window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp);
+}
+inner.addEventListener('pointerdown', e => {
+  if (e.button > 0) return;
+  const tbtn = e.target.closest('[data-toggle]'); if (tbtn) return;
+  const clipEl = e.target.closest('.clip'); if (clipEl) { startClipDrag(e, clipEl); return; }
+  if (e.target.closest('#rulerLane')) { startScrub(e); return; }
+  const lane = e.target.closest('.lane[data-track]');
+  if (lane) { select(null); if (e.pointerType === 'mouse') startScrub(e); else seek(timeFromX(e.clientX)); }
+});
+inner.addEventListener('click', e => {
+  const b = e.target.closest('[data-toggle]'); if (!b) return;
+  const tr = trackById(b.dataset.toggle); if (!tr) return;
+  pushHistory(); tr.off = !tr.off; renderTimeline();
+});
+tlScroll.addEventListener('dragover', e => { if (e.target.closest('.lane[data-track]')) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
+tlScroll.addEventListener('drop', async e => {
+  const lane = e.target.closest('.lane[data-track]'); if (!lane) return;
+  e.preventDefault(); e.stopPropagation();
+  const t = timeFromX(e.clientX); const trackId = lane.dataset.track;
+  const files = [...(e.dataTransfer.files || [])];
+  if (files.length) { let at = t; for (const m of await importFiles(files)) { const c = placeMedia(m, trackId, at); if (c) at = c.start + c.dur; } }
+  else { const m = media.get(e.dataTransfer.getData('text/plain')); if (m) placeMedia(m, trackId, t); }
+});
+
+/* ---------- inspector ---------- */
+const pct = { to: v => Math.round(v * 100), from: v => v / 100 };
+const F = {
+  x: { label: 'Position X', type: 'range', min: -100, max: 100, unit: '%', ...pct },
+  y: { label: 'Position Y', type: 'range', min: -100, max: 100, unit: '%', ...pct },
+  scale: { label: 'Scale', type: 'range', min: 10, max: 400, unit: '%', ...pct },
+  rotation: { label: 'Rotation', type: 'range', min: -180, max: 180, unit: '°' },
+  opacity: { label: 'Opacity', type: 'range', min: 0, max: 100, unit: '%', ...pct },
+  fadeIn: { label: 'Fade in', type: 'range', min: 0, max: 5, step: 0.1, unit: 's' },
+  fadeOut: { label: 'Fade out', type: 'range', min: 0, max: 5, step: 0.1, unit: 's' },
+  volume: { label: 'Volume', type: 'range', min: 0, max: 200, unit: '%', ...pct },
+  text: { label: 'Text', type: 'textarea' },
+  font: { label: 'Font', type: 'select', options: [['display', 'Display'], ['sans', 'Sans'], ['serif', 'Serif'], ['mono', 'Mono']] },
+  weight: { label: 'Weight', type: 'select', num: true, options: [[400, 'Regular'], [600, 'Semibold'], [800, 'Heavy']] },
+  size: { label: 'Size', type: 'range', min: 12, max: 320, unit: 'px' },
+  color: { label: 'Color', type: 'color' },
+  shadow: { label: 'Shadow', type: 'checkbox' },
+  colorA: { label: 'Color A', type: 'color' },
+  colorB: { label: 'Color B', type: 'color' },
+  speed: { label: 'Motion', type: 'range', min: 0, max: 3, step: 0.1, unit: '×' },
+  count: { label: 'Bars', type: 'range', min: 8, max: 64, unit: '' }
+};
+function fmtField(f, v) { const n = Number(v); return (f.step && f.step < 1 ? n.toFixed(1) : String(Math.round(n))) + (f.unit || ''); }
+function fieldHTML(key, c) {
+  const f = F[key], v = c.props[key], id = `f-${key}`;
+  if (f.type === 'range') { const ui = f.to ? f.to(v) : v; return `<div class="f"><label for="${id}">${f.label}</label><input type="range" id="${id}" data-key="${key}" min="${f.min}" max="${f.max}" step="${f.step || 1}" value="${ui}"><output data-out="${key}">${fmtField(f, ui)}</output></div>`; }
+  if (f.type === 'color') return `<div class="f f2"><label for="${id}">${f.label}</label><input type="color" id="${id}" data-key="${key}" value="${esc(v)}"></div>`;
+  if (f.type === 'checkbox') return `<div class="f f2"><label for="${id}">${f.label}</label><input type="checkbox" id="${id}" data-key="${key}"${v ? ' checked' : ''}></div>`;
+  if (f.type === 'select') return `<div class="f f2"><label for="${id}">${f.label}</label><select id="${id}" data-key="${key}">${f.options.map(([val, l]) => `<option value="${val}"${String(val) === String(v) ? ' selected' : ''}>${l}</option>`).join('')}</select></div>`;
+  return `<div class="f fcol"><label for="${id}">${f.label}</label><textarea id="${id}" data-key="${key}" rows="3">${esc(v)}</textarea></div>`;
+}
+const sec = (title, keys, c) => `<div class="isec"><h3>${title}</h3>${keys.map(k => fieldHTML(k, c)).join('')}</div>`;
+const TYPE_TITLE = { video: 'Video clip', image: 'Image', audio: 'Audio clip', text: 'Text', gen: 'Generator' };
+function renderInspector() {
+  const body = $('#inspBody'); const c = clipById(state.selected);
+  if (!c) {
+    $('#inspTitle').textContent = 'Project';
+    const [w, h] = ASPECTS[state.aspect];
+    body.innerHTML = `
+      <div class="isec">
+        <div class="meta-grid"><span>Format</span><b>${state.aspect} · ${w}×${h}</b><span>Frame rate</span><b>${FPS} fps</b><span>Length</span><b>${tc(projectEnd())}</b><span>Clips</span><b>${state.clips.length} on ${state.tracks.length} tracks</b></div>
+        <p class="lede">Select a clip to edit it. Higher tracks draw on top of lower ones, so put titles above your footage.</p>
+      </div>
+      <div class="isec"><h3>Shortcuts</h3>
+        <div class="keys"><kbd>Space</kbd><span>Play / pause</span><kbd>S</kbd><span>Split at playhead</span><kbd>Del</kbd><span>Delete clip</span><kbd>← →</kbd><span>Step one frame</span><kbd>Ctrl Z</kbd><span>Undo</span><kbd>Ctrl D</kbd><span>Duplicate</span><kbd>Ctrl S</kbd><span>Save to Drive</span></div>
+      </div>`;
+    return;
+  }
+  $('#inspTitle').textContent = TYPE_TITLE[c.type] || 'Clip';
+  const m = c.mediaId ? media.get(c.mediaId) : null;
+  let h = `<div class="isec"><div class="meta-grid"><span>Starts</span><b>${tc(c.start)}</b><span>Length</span><b>${tc(c.dur)}</b>${m ? `<span>Source</span><b title="${esc(m.name)}">${esc(m.name)}</b>` : ''}${isMediaClip(c) ? `<span>In point</span><b>${tc(c.in)}</b>` : ''}</div>
+    <div class="actions"><button class="btn" data-act="split">Split</button><button class="btn" data-act="dup">Duplicate</button><button class="btn danger" data-act="del">Delete</button></div></div>`;
+  if (c.type === 'text') h += sec('Text', ['text', 'font', 'weight', 'size', 'color', 'shadow'], c);
+  if (c.type === 'gen') {
+    if (c.props.gen === 'gradient') h += sec('Look', ['colorA', 'colorB', 'speed'], c);
+    if (c.props.gen === 'bars') h += sec('Look', ['color', 'count'], c) + `<div class="isec"><p class="lede">Bars react to your music while it plays. With no audio on the timeline they animate on their own.</p></div>`;
+    if (c.props.gen === 'solid') h += sec('Look', ['color'], c);
+  }
+  if (c.type !== 'audio') h += sec('Transform', ['x', 'y', 'scale', 'rotation', 'opacity'], c);
+  if (isMediaClip(c)) h += sec('Audio', ['volume'], c);
+  h += sec('Fades', ['fadeIn', 'fadeOut'], c);
+  body.innerHTML = h;
+}
+const inspBody = $('#inspBody');
+inspBody.addEventListener('input', e => {
+  const key = e.target.dataset.key; if (!key) return;
+  const c = clipById(state.selected); if (!c) return; const f = F[key];
+  let v;
+  if (f.type === 'checkbox') v = e.target.checked;
+  else if (f.type === 'range') { const n = Number(e.target.value); v = f.from ? f.from(n) : n; const out = inspBody.querySelector(`[data-out="${key}"]`); if (out) out.textContent = fmtField(f, n); }
+  else if (f.type === 'select') v = f.num ? Number(e.target.value) : e.target.value;
+  else v = e.target.value;
+  beginEdit(); c.props[key] = v;
+  if (key === 'text') { const l = inner.querySelector(`.clip[data-id="${c.id}"] .lbl`); if (l) l.textContent = clipName(c); }
+});
+inspBody.addEventListener('change', endEdit);
+inspBody.addEventListener('focusout', endEdit);
+inspBody.addEventListener('click', e => {
+  const a = e.target.closest('[data-act]'); if (!a) return;
+  ({ split: splitSelected, dup: duplicateSelected, del: deleteSelected })[a.dataset.act]();
+});
+
+/* ---------- drag selected layer in preview ---------- */
+canvas.addEventListener('pointerdown', e => {
+  let c = clipById(state.selected);
+  const activeVis = k => kindOf(k) === 'visual' && state.time >= k.start && state.time < k.start + k.dur && !(trackById(k.trackId) || {}).off;
+  if (!c || !activeVis(c)) {
+    const order = state.tracks.filter(t => t.kind === 'visual').map(t => t.id);
+    c = state.clips.filter(activeVis).sort((a, b) => order.indexOf(a.trackId) - order.indexOf(b.trackId))[0];
+    if (!c) return; select(c.id);
+  }
+  e.preventDefault(); canvas.setPointerCapture(e.pointerId);
+  const r = canvas.getBoundingClientRect(), x0 = e.clientX, y0 = e.clientY, ox = c.props.x, oy = c.props.y, snap0 = snapshot();
+  let moved = false;
+  const mv = ev => { moved = true; c.props.x = clamp(ox + (ev.clientX - x0) / r.width, -1, 1); c.props.y = clamp(oy + (ev.clientY - y0) / r.height, -1, 1); };
+  const up = () => { canvas.removeEventListener('pointermove', mv); canvas.removeEventListener('pointerup', up); canvas.removeEventListener('pointercancel', up); if (moved) { pushHistory(snap0); renderInspector(); } };
+  canvas.addEventListener('pointermove', mv); canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
+});
+
+/* ---------- export ---------- */
+let rec = null, exportCancelled = false, exportUrl = null, exportBlob = null, exportExt = 'webm';
+const modal = $('#exportModal');
+function openModal() { modal.hidden = false; $('#exProgress').style.display = 'flex'; $('#exDone').hidden = true; $('#exTitle').textContent = 'Exporting'; $('#exBar').style.width = '0%'; $('#exTime').textContent = ''; }
+function closeModal() { modal.hidden = true; const v = $('#exVideo'); v.pause(); }
+async function startExport() {
+  const end = projectEnd();
+  if (end <= 0) { toast('Add a clip to the timeline before exporting.'); return; }
+  if (!canvas.captureStream || !window.MediaRecorder) { toast("This browser can't record video. Try Chrome, Edge or Firefox."); return; }
+  ensureAudio(); pause();
+  const stream = canvas.captureStream(FPS);
+  let dest = null;
+  if (audioCtx) { try { dest = audioCtx.createMediaStreamDestination(); master.connect(dest); dest.stream.getAudioTracks().forEach(t => stream.addTrack(t)); } catch (e) { dest = null; } }
+  const types = ['video/mp4;codecs=avc1.42E01F,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+  const mime = types.find(t => { try { return MediaRecorder.isTypeSupported(t); } catch (e) { return false; } }) || '';
+  try { rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 8e6 } : { videoBitsPerSecond: 8e6 }); }
+  catch (e) { toast("Export couldn't start in this browser."); if (dest) try { master.disconnect(dest); } catch (_) {} return; }
+  const chunks = []; exportCancelled = false;
+  rec.ondataavailable = ev => { if (ev.data && ev.data.size) chunks.push(ev.data); };
+  rec.onstop = () => {
+    if (dest) { try { master.disconnect(dest); } catch (e) {} }
+    stream.getTracks().forEach(t => t.stop());
+    if (exportCancelled) { closeModal(); toast('Export cancelled.'); return; }
+    const type = (rec.mimeType || mime || 'video/webm').split(';')[0];
+    showResult(new Blob(chunks, { type }), type, end);
+  };
+  openModal(); select(null); seek(0); sync(0);
+  await new Promise(r => setTimeout(r, 500));
+  if (exportCancelled) { closeModal(); return; }
+  exporting = true; rec.start(250); play(true);
+}
+function finishExport() { exporting = false; pause(); if (rec && rec.state !== 'inactive') rec.stop(); }
+function showResult(blob, type, dur) {
+  if (exportUrl) URL.revokeObjectURL(exportUrl);
+  exportBlob = blob; exportUrl = URL.createObjectURL(blob); exportExt = type.includes('mp4') ? 'mp4' : 'webm';
+  $('#exTitle').textContent = 'Export ready';
+  $('#exProgress').style.display = 'none'; $('#exDone').hidden = false;
+  $('#exVideo').src = exportUrl;
+  $('#exMeta').textContent = `${W}×${H} · ${exportExt.toUpperCase()} · ${fmtDur(dur)} · ${(blob.size / 1e6).toFixed(1)} MB`;
+}
+$('#exportBtn').addEventListener('click', startExport);
+$('#exCancel').addEventListener('click', () => { exportCancelled = true; if (exporting) finishExport(); });
+$('#exClose').addEventListener('click', closeModal);
+$('#exSave').addEventListener('click', () => {
+  if (!exportUrl) return;
+  const name = ($('#projName').value.trim() || 'layerline-export').replace(/[^\w\- ]+/g, '').replace(/\s+/g, '-').toLowerCase() || 'layerline-export';
+  const a = document.createElement('a'); a.href = exportUrl; a.download = `${name}.${exportExt}`; document.body.appendChild(a); a.click(); a.remove();
+});
+
+/* ---------- Google sign-in + Drive ---------- */
+const CFG = window.LAYERLINE_CONFIG || {};
+const cloudReady = !!(CFG.googleClientId && CFG.googleApiKey);
+const SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const DRIVE_API = 'https://www.googleapis.com/drive/v3', UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
+const CHUNK = 8 * 1024 * 1024; // must be a multiple of 256 KiB
+const cloud = { token: null, exp: 0, user: null, folderId: null, tokenClient: null, waiters: [], projectFileId: null, uploads: 0, backup: true };
+try { const b = localStorage.getItem('layerline.backup'); if (b !== null) cloud.backup = b === '1'; } catch (e) {}
+let dirty = false;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const scriptCache = {};
+function loadScript(src) {
+  if (!scriptCache[src]) scriptCache[src] = new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = src; s.async = true;
+    s.onload = res; s.onerror = () => { delete scriptCache[src]; rej(new Error('Could not reach Google. Check your connection.')); };
+    document.head.appendChild(s);
+  });
+  return scriptCache[src];
+}
+let pickerLoading = null;
+function loadPicker() {
+  if (!pickerLoading) pickerLoading = loadScript('https://apis.google.com/js/api.js')
+    .then(() => new Promise((res, rej) => gapi.load('picker', { callback: res, onerror: () => rej(new Error('Could not load the Drive picker.')) })))
+    .catch(e => { pickerLoading = null; throw e; });
+  return pickerLoading;
+}
+async function initAuth() {
+  await loadScript('https://accounts.google.com/gsi/client');
+  if (cloud.tokenClient) return;
+  const settle = (fn, v) => { const w = cloud.waiters.splice(0); w.forEach(x => x[fn](v)); };
+  cloud.tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CFG.googleClientId, scope: SCOPE,
+    callback: r => {
+      if (r.error) { settle('rej', new Error(r.error_description || 'Google sign-in failed.')); return; }
+      cloud.token = r.access_token; cloud.exp = Date.now() + (Number(r.expires_in) || 3600) * 1000;
+      settle('res', cloud.token);
+    },
+    error_callback: e => settle('rej', new Error(e && e.type === 'popup_closed' ? 'Sign-in was closed before it finished.' : e && e.type === 'popup_failed_to_open' ? 'Your browser blocked the Google sign-in window. Allow pop-ups for this site.' : 'Google sign-in failed.'))
+  });
+}
+async function getToken() {
+  if (cloud.token && Date.now() < cloud.exp - 60000) return cloud.token;
+  if (!cloudReady) throw new Error('Google Drive isn’t set up for this copy of Layerline yet. See SETUP.md.');
+  await initAuth();
+  return new Promise((res, rej) => {
+    cloud.waiters.push({ res, rej });
+    if (cloud.waiters.length === 1) cloud.tokenClient.requestAccessToken({ prompt: '' });
+  });
+}
+async function gfetch(url, opts = {}, retry = true) {
+  const t = await getToken();
+  let r;
+  try { r = await fetch(url, Object.assign({}, opts, { headers: Object.assign({}, opts.headers || {}, { Authorization: 'Bearer ' + t }) })); }
+  catch (e) { throw new Error('Couldn’t reach Google Drive. Check your connection.'); }
+  if (r.status === 401 && retry) { cloud.token = null; return gfetch(url, opts, false); }
+  if (!r.ok) {
+    let msg = r.statusText || `error ${r.status}`;
+    try { const j = await r.json(); msg = (j.error && j.error.message) || msg; } catch (e) {}
+    if (r.status === 403 && /quota|storage/i.test(msg)) msg = 'Your Google Drive is full.';
+    const err = new Error(msg); err.status = r.status; throw err;
+  }
+  return r;
+}
+async function signIn() {
+  try { await getToken(); } catch (e) { toast(e.message); return false; }
+  try { const r = await gfetch(`${DRIVE_API}/about?fields=user(displayName,emailAddress,photoLink)`); cloud.user = (await r.json()).user || {}; }
+  catch (e) { cloud.user = cloud.user || {}; }
+  renderCloud(); renderBin();
+  return true;
+}
+function signOut() {
+  if (cloud.uploads > 0) { toast('Wait for uploads to finish before signing out.'); return; }
+  try { if (cloud.token && window.google && google.accounts) google.accounts.oauth2.revoke(cloud.token, () => {}); } catch (e) {}
+  cloud.token = null; cloud.user = null; cloud.folderId = null; cloud.projectFileId = null;
+  $('#acct').open = false; renderCloud(); renderBin(); toast('Signed out of Google');
+}
+async function ensureSignedIn() {
+  if (!cloudReady) { toast('Google Drive isn’t set up for this copy of Layerline yet. See SETUP.md.'); return false; }
+  if (cloud.user) { try { await getToken(); return true; } catch (e) { toast(e.message); return false; } }
+  return signIn();
+}
+async function ensureFolder() {
+  if (cloud.folderId) return cloud.folderId;
+  const q = encodeURIComponent("mimeType='application/vnd.google-apps.folder' and trashed=false and appProperties has { key='layerline' and value='root' }");
+  const r = await gfetch(`${DRIVE_API}/files?q=${q}&fields=files(id)&pageSize=1`);
+  const j = await r.json();
+  if (j.files && j.files[0]) return (cloud.folderId = j.files[0].id);
+  const c = await gfetch(`${DRIVE_API}/files?fields=id`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Layerline', mimeType: 'application/vnd.google-apps.folder', appProperties: { layerline: 'root' } }) });
+  return (cloud.folderId = (await c.json()).id);
+}
+function xhrPut(url, body, headers, onProg) {
+  return new Promise(res => {
+    const x = new XMLHttpRequest(); x.open('PUT', url);
+    for (const k in headers) x.setRequestHeader(k, headers[k]);
+    if (onProg && x.upload) x.upload.onprogress = e => onProg(e.loaded);
+    x.onload = () => res({ status: x.status, range: x.getResponseHeader('Range'), text: x.responseText });
+    x.onerror = () => res({ status: 0 });
+    x.send(body);
+  });
+}
+// Resumable upload: any size, sent in 8 MB chunks; resumes after network drops.
+async function uploadResumable(blob, meta, onProgress) {
+  const total = blob.size, type = blob.type || 'application/octet-stream';
+  const init = await gfetch(`${UPLOAD_API}/files?uploadType=resumable&fields=id,name,size`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json; charset=UTF-8', 'X-Upload-Content-Type': type, 'X-Upload-Content-Length': String(total) },
+    body: JSON.stringify(meta)
+  });
+  const session = init.headers.get('Location');
+  if (!session) throw new Error('Drive didn’t start the upload.');
+  const nextFrom = range => range ? Number(range.split('-')[1]) + 1 : 0;
+  let offset = 0, fails = 0;
+  for (;;) {
+    const end = Math.min(offset + CHUNK, total);
+    const r = await xhrPut(session, blob.slice(offset, end), { 'Content-Range': `bytes ${offset}-${end - 1}/${total}` }, n => onProgress((offset + n) / total));
+    if (r.status === 200 || r.status === 201) { onProgress(1); return JSON.parse(r.text); }
+    if (r.status === 308) { fails = 0; offset = r.range ? nextFrom(r.range) : end; onProgress(offset / total); continue; }
+    if (r.status === 404 || r.status === 410) throw new Error('The upload expired. Try again.');
+    if (r.status === 403) throw new Error('Drive refused the upload. Your Drive may be full.');
+    if (++fails > 8) throw new Error('The upload kept failing. Check your connection and try again.');
+    await sleep(Math.min(30000, 1000 * 2 ** fails) + Math.random() * 500);
+    const q = await xhrPut(session, null, { 'Content-Range': `bytes */${total}` });
+    if (q.status === 200 || q.status === 201) { onProgress(1); return JSON.parse(q.text); }
+    if (q.status === 308) offset = nextFrom(q.range);
+  }
+}
+async function downloadDrive(id, size, onProgress) {
+  const r = await gfetch(`${DRIVE_API}/files/${encodeURIComponent(id)}?alt=media`);
+  const type = (r.headers.get('Content-Type') || '').split(';')[0];
+  const total = Number(r.headers.get('Content-Length')) || Number(size) || 0;
+  if (!r.body || !r.body.getReader) { const b = await r.blob(); onProgress(1); return b; }
+  const reader = r.body.getReader(), parts = []; let got = 0;
+  for (;;) { const { done, value } = await reader.read(); if (done) break; parts.push(value); got += value.length; if (total) onProgress(Math.min(1, got / total)); }
+  onProgress(1);
+  return new Blob(parts, { type });
+}
+
+/* transfer progress panel */
+const jobsEl = $('#jobs');
+function job(label) {
+  const el = document.createElement('div'); el.className = 'job';
+  el.innerHTML = '<div class="jrow"><span class="jl"></span><span class="jp"></span></div><div class="bar"><i></i></div>';
+  jobsEl.appendChild(el); jobsEl.hidden = false;
+  const L = el.querySelector('.jl'), P = el.querySelector('.jp'), B = el.querySelector('i');
+  L.textContent = label;
+  const end = msg => { el.remove(); if (!jobsEl.children.length) jobsEl.hidden = true; if (msg) toast(msg); };
+  return { set: p => { B.style.width = `${(p * 100).toFixed(1)}%`; P.textContent = `${Math.round(p * 100)}%`; }, label: t => { L.textContent = t; }, done: end, fail: end };
+}
+
+/* media backup */
+let upChain = Promise.resolve();
+function queueBackup(m) {
+  if (m.driveId || m.cloud === 'uploading' || m.cloud === 'queued' || !m.file) return;
+  m.cloud = 'queued'; renderBin(); renderCloud();
+  upChain = upChain.then(() => backupMedia(m));
+}
+async function backupMedia(m) {
+  if (m.driveId || !media.has(m.id)) return;
+  m.cloud = 'uploading'; m.progress = 0; cloud.uploads++; renderBin(); renderCloud();
+  const j = job(`Saving ${m.name} to Drive`);
+  try {
+    const folder = await ensureFolder();
+    const f = await uploadResumable(m.file, { name: m.name, parents: [folder], appProperties: { layerline: 'media' } }, p => { m.progress = p; j.set(p); updateMediaProgress(m); });
+    m.driveId = f.id; m.cloud = 'saved'; m.err = null; dirty = true; j.done();
+  } catch (e) {
+    m.cloud = 'error'; m.err = e.message; j.fail(`Couldn’t save ${m.name} to Drive. ${e.message}`);
+  } finally { cloud.uploads--; renderBin(); renderCloud(); }
+}
+function updateMediaProgress(m) {
+  const el = document.querySelector(`[data-cst="${m.id}"]`);
+  if (el) el.textContent = `Uploading ${Math.round((m.progress || 0) * 100)}%`;
+}
+function cloudChip(m) {
+  if (m.cloud === 'saved') return `<span class="cstat ok" data-cst="${m.id}">In Drive</span>`;
+  if (m.cloud === 'uploading') return `<span class="cstat busy" data-cst="${m.id}">Uploading ${Math.round((m.progress || 0) * 100)}%</span>`;
+  if (m.cloud === 'queued') return `<span class="cstat busy" data-cst="${m.id}">Waiting to upload</span>`;
+  if (m.cloud === 'error') return `<button class="cstat err" type="button" data-save="${m.id}" title="${esc(m.err || '')}">Upload failed · Retry</button>`;
+  return cloudReady ? `<button class="cstat" type="button" data-save="${m.id}">Save to Drive</button>` : '';
+}
+
+/* add from Drive (Google Picker) */
+const PICK_AUDIO = 'audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/wave,audio/aac,audio/mp4,audio/x-m4a,audio/ogg,audio/flac,audio/webm';
+async function openPicker() {
+  if (!(await ensureSignedIn())) return;
+  try { await loadPicker(); } catch (e) { toast(e.message); return; }
+  let token; try { token = await getToken(); } catch (e) { toast(e.message); return; }
+  const P = google.picker;
+  const vids = new P.DocsView(P.ViewId.DOCS_VIDEOS).setIncludeFolders(true);
+  const auds = new P.DocsView(P.ViewId.DOCS).setMimeTypes(PICK_AUDIO).setIncludeFolders(true);
+  const imgs = new P.DocsView(P.ViewId.DOCS_IMAGES).setIncludeFolders(true);
+  const b = new P.PickerBuilder()
+    .addView(vids).addView(auds).addView(imgs)
+    .enableFeature(P.Feature.MULTISELECT_ENABLED)
+    .setOAuthToken(token).setDeveloperKey(CFG.googleApiKey)
+    .setTitle('Add from Google Drive')
+    .setCallback(async data => {
+      if (data[P.Response.ACTION] !== P.Action.PICKED) return;
+      for (const d of data[P.Response.DOCUMENTS] || []) {
+        await addFromDrive({ id: d[P.Document.ID], name: d[P.Document.NAME], mimeType: d[P.Document.MIME_TYPE], size: d.sizeBytes });
+      }
+    });
+  if (CFG.googleAppId) b.setAppId(String(CFG.googleAppId));
+  if (P.Feature.SUPPORT_DRIVES) b.enableFeature(P.Feature.SUPPORT_DRIVES);
+  b.build().setVisible(true);
+}
+function fileTypeFor(kind, got) {
+  if (got && got.startsWith(kind + '/')) return got === 'video/quicktime' ? 'video/mp4' : got;
+  return { video: 'video/mp4', audio: 'audio/mpeg', image: 'image/jpeg' }[kind] || got || '';
+}
+async function addFromDrive(d) {
+  const kind = (d.mimeType || '').split('/')[0];
+  if (!['video', 'audio', 'image'].includes(kind)) { toast(`${d.name} isn’t a video, audio or image file.`); return; }
+  const j = job(`Downloading ${d.name}`);
+  try {
+    const blob = await downloadDrive(d.id, d.size, j.set);
+    const file = new File([blob], d.name, { type: fileTypeFor(kind, d.mimeType) });
+    const m = await importFile(file, { driveId: d.id });
+    j.done(m ? `Added ${d.name}` : '');
+    if (m) placeMedia(m, null, state.time);
+  } catch (e) { j.fail(`Couldn’t download ${d.name}. ${e.message}`); }
+}
+
+/* projects */
+const projModal = $('#projModal'), pList = $('#pList');
+function projectData() {
+  return {
+    app: 'layerline', version: 1,
+    name: $('#projName').value.trim() || 'Untitled project',
+    aspect: state.aspect, tracks: state.tracks, clips: state.clips,
+    media: [...media.values()].map(m => ({ id: m.id, name: m.name, type: m.type, driveId: m.driveId || null }))
+  };
+}
+let saving = false;
+async function saveProject() {
+  if (saving) return;
+  if (!(await ensureSignedIn())) return;
+  saving = true; renderCloud();
+  const j = job('Saving project to Drive');
+  try {
+    const pending = [...media.values()].filter(m => !m.driveId);
+    if (pending.length) {
+      j.label(`Uploading ${pending.length} media file${pending.length > 1 ? 's' : ''} first`);
+      pending.forEach(m => { if (m.cloud === 'error') m.cloud = 'local'; queueBackup(m); });
+      await upChain;
+    }
+    j.label('Saving project to Drive');
+    const missing = [...media.values()].filter(m => !m.driveId).length;
+    const data = projectData(), body = JSON.stringify(data), fname = `${data.name}.layerline.json`;
+    const folder = await ensureFolder();
+    if (cloud.projectFileId) {
+      try {
+        await gfetch(`${UPLOAD_API}/files/${cloud.projectFileId}?uploadType=media`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body });
+        await gfetch(`${DRIVE_API}/files/${cloud.projectFileId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: fname }) });
+      } catch (e) { if (e.status === 404) cloud.projectFileId = null; else throw e; }
+    }
+    if (!cloud.projectFileId) {
+      const f = await uploadResumable(new Blob([body], { type: 'application/json' }), { name: fname, parents: [folder], appProperties: { layerline: 'project' } }, () => {});
+      cloud.projectFileId = f.id;
+    }
+    dirty = false;
+    j.done(missing ? `Project saved, but ${missing} file${missing > 1 ? 's' : ''} didn’t upload and will be missing when you reopen it.` : `Saved “${data.name}” to Drive`);
+  } catch (e) { j.fail(`Couldn’t save the project. ${e.message}`); }
+  finally { saving = false; renderCloud(); }
+}
+async function openProjects() {
+  if (!(await ensureSignedIn())) return;
+  projModal.hidden = false;
+  pList.innerHTML = '<li class="dmsg">Loading your projects…</li>';
+  try {
+    const q = encodeURIComponent("appProperties has { key='layerline' and value='project' } and trashed=false");
+    const r = await gfetch(`${DRIVE_API}/files?q=${q}&orderBy=modifiedTime desc&pageSize=50&fields=files(id,name,modifiedTime)`);
+    const files = (await r.json()).files || [];
+    if (!files.length) { pList.innerHTML = '<li class="dmsg">No saved projects yet. Use Save to Drive to save this one.</li>'; return; }
+    pList.innerHTML = '';
+    for (const f of files) {
+      const li = document.createElement('li'); li.className = 'drow prow';
+      const when = f.modifiedTime ? new Date(f.modifiedTime).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+      li.innerHTML = `<span class="nm"><b></b><span>Saved ${esc(when)}</span></span><span class="big">${f.id === cloud.projectFileId ? 'Open now' : ''}</span><button class="btn" type="button">Open</button>`;
+      li.querySelector('b').textContent = (f.name || 'Untitled').replace(/\.layerline\.json$/, '');
+      li.querySelector('button').addEventListener('click', () => loadProject(f.id));
+      pList.appendChild(li);
+    }
+  } catch (e) { pList.innerHTML = `<li class="dmsg err">${esc('Couldn’t load your projects. ' + e.message)}</li>`; }
+}
+function clearProject() {
+  pause();
+  for (const id of [...els.keys()]) dropEl(id);
+  for (const m of media.values()) if (m.url && m.url.startsWith('blob:')) URL.revokeObjectURL(m.url);
+  media.clear(); state.clips = []; state.selected = null;
+  undoStack.length = 0; redoStack.length = 0; updateUndo();
+}
+function bumpIds() {
+  let max = uid;
+  const scan = id => { const mm = /(\d+)$/.exec(String(id)); if (mm) max = Math.max(max, Number(mm[1]) + 1); };
+  state.tracks.forEach(t => scan(t.id)); state.clips.forEach(c => scan(c.id)); [...media.keys()].forEach(scan);
+  uid = max;
+}
+async function loadProject(fileId) {
+  if (cloud.uploads > 0) { toast('Wait for uploads to finish before opening another project.'); return; }
+  projModal.hidden = true;
+  const j = job('Opening project');
+  try {
+    const r = await gfetch(`${DRIVE_API}/files/${encodeURIComponent(fileId)}?alt=media`);
+    const p = await r.json();
+    if (!p || p.app !== 'layerline') throw new Error('That file isn’t a Layerline project.');
+    clearProject();
+    state.tracks = p.tracks || []; renderBin(); renderTimeline();
+    const list = p.media || []; let failed = 0, i = 0;
+    for (const pm of list) {
+      i++; j.label(`Downloading ${i} of ${list.length}: ${pm.name}`); j.set(0);
+      if (!pm.driveId) { failed++; continue; }
+      try {
+        const blob = await downloadDrive(pm.driveId, 0, j.set);
+        await importFile(new File([blob], pm.name, { type: fileTypeFor(pm.type, blob.type) }), { id: pm.id, driveId: pm.driveId });
+      } catch (e) { failed++; }
+    }
+    state.clips = p.clips || [];
+    bumpIds();
+    setAspect(ASPECTS[p.aspect] ? p.aspect : '16:9');
+    $('#projName').value = p.name || 'Untitled project';
+    cloud.projectFileId = fileId; dirty = false;
+    renderBin(); renderTimeline(); renderInspector(); seek(0); tlScroll.scrollLeft = 0;
+    j.done(failed ? `Opened “${p.name}”, but ${failed} media file${failed > 1 ? 's' : ''} couldn’t be downloaded from Drive.` : `Opened “${p.name}”`);
+  } catch (e) { j.fail(`Couldn’t open the project. ${e.message}`); }
+}
+function newProject() {
+  if (cloud.uploads > 0) { toast('Wait for uploads to finish before starting a new project.'); return; }
+  projModal.hidden = true;
+  clearProject();
+  state.tracks = [
+    { id: nid('t'), name: 'Titles', kind: 'visual', off: false },
+    { id: nid('t'), name: 'Video 2', kind: 'visual', off: false },
+    { id: nid('t'), name: 'Video 1', kind: 'visual', off: false },
+    { id: nid('t'), name: 'Music', kind: 'audio', off: false },
+    { id: nid('t'), name: 'Audio 2', kind: 'audio', off: false }
+  ];
+  $('#projName').value = 'Untitled project'; cloud.projectFileId = null; dirty = false;
+  renderBin(); renderTimeline(); renderInspector(); seek(0);
+  toast('Started a new project');
+}
+
+/* top bar state */
+function renderCloud() {
+  const signed = !!cloud.user;
+  $('#signInBtn').hidden = signed;
+  $('#acct').hidden = !signed;
+  $('#saveBtn').disabled = saving;
+  $('#saveBtn').textContent = saving ? 'Saving…' : 'Save to Drive';
+  if (signed) {
+    const u = cloud.user, name = u.displayName || u.emailAddress || 'Google account';
+    $('#acctEmail').textContent = u.emailAddress || name;
+    const av = $('#acctAvatar');
+    if (u.photoLink) { av.style.backgroundImage = `url("${u.photoLink.replace(/"/g, '')}")`; av.textContent = ''; }
+    else { av.style.backgroundImage = ''; av.textContent = name.trim().charAt(0).toUpperCase(); }
+    $('#acctSum').setAttribute('aria-label', `Account: ${name}`);
+  }
+  const st = $('#cloudStatus');
+  const busy = [...media.values()].filter(m => m.cloud === 'uploading' || m.cloud === 'queued').length;
+  if (busy) { st.hidden = false; st.textContent = `Uploading ${busy} file${busy > 1 ? 's' : ''}…`; }
+  else st.hidden = true;
+  $('#backupChk').checked = cloud.backup;
+}
+
+$('#signInBtn').addEventListener('click', signIn);
+$('#signOutBtn').addEventListener('click', signOut);
+$('#saveBtn').addEventListener('click', saveProject);
+$('#projectsBtn').addEventListener('click', openProjects);
+$('#driveBtn').addEventListener('click', openPicker);
+$('#pClose').addEventListener('click', () => { projModal.hidden = true; });
+$('#pNew').addEventListener('click', newProject);
+$('#backupChk').addEventListener('change', e => {
+  cloud.backup = e.target.checked;
+  try { localStorage.setItem('layerline.backup', cloud.backup ? '1' : '0'); } catch (err) {}
+  if (cloud.backup && cloud.user) for (const m of media.values()) if (!m.driveId && m.cloud !== 'error') queueBackup(m);
+});
+$('#exDrive').addEventListener('click', async () => {
+  if (!exportBlob) return;
+  if (!(await ensureSignedIn())) return;
+  const btn = $('#exDrive'); btn.disabled = true;
+  const name = ($('#projName').value.trim() || 'Layerline export') + '.' + exportExt;
+  const j = job(`Saving ${name} to Drive`);
+  try {
+    const folder = await ensureFolder();
+    await uploadResumable(exportBlob, { name, parents: [folder], appProperties: { layerline: 'export' } }, j.set);
+    j.done(`Saved ${name} to the Layerline folder in Drive`);
+  } catch (e) { j.fail(`Couldn’t save the video to Drive. ${e.message}`); }
+  finally { btn.disabled = false; }
+});
+window.addEventListener('beforeunload', e => {
+  if (cloud.uploads > 0 || (dirty && cloud.user)) { e.preventDefault(); e.returnValue = ''; }
+});
+renderCloud();
+
+/* ---------- toast ---------- */
+let toastT = null;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3200); }
+
+/* ---------- wiring ---------- */
+$('#playBtn').addEventListener('click', togglePlay);
+$('#toStart').addEventListener('click', () => { pause(); seek(0); tlScroll.scrollLeft = 0; });
+$('#stepBack').addEventListener('click', () => step(-1));
+$('#stepFwd').addEventListener('click', () => step(1));
+$('#undoBtn').addEventListener('click', undo);
+$('#redoBtn').addEventListener('click', redo);
+$('#splitBtn').addEventListener('click', splitSelected);
+$('#dupBtn').addEventListener('click', duplicateSelected);
+$('#delBtn').addEventListener('click', () => { if (!state.selected) toast('Select a clip to delete.'); else deleteSelected(); });
+$('#addVTrack').addEventListener('click', () => addTrack('visual'));
+$('#addATrack').addEventListener('click', () => addTrack('audio'));
+$('#snapBtn').addEventListener('click', e => { state.snap = !state.snap; e.currentTarget.setAttribute('aria-pressed', String(state.snap)); });
+$('#zoom').addEventListener('input', e => {
+  const before = state.time * state.pps - tlScroll.scrollLeft;
+  state.pps = Number(e.target.value); renderTimeline();
+  tlScroll.scrollLeft = Math.max(0, state.time * state.pps - before);
+});
+$('#aspect').addEventListener('change', e => { pushHistory(); setAspect(e.target.value); renderInspector(); });
+$('#fileIn').addEventListener('change', async e => { const files = [...e.target.files]; e.target.value = ''; await importFiles(files); });
+document.querySelectorAll('[data-add]').forEach(b => b.addEventListener('click', () => addGenerated(b.dataset.add)));
+$('#mediaList').addEventListener('click', async e => {
+  const sv = e.target.closest('[data-save]');
+  if (sv) { const m = media.get(sv.dataset.save); if (m && (await ensureSignedIn())) { if (m.cloud === 'error') m.cloud = 'local'; queueBackup(m); } return; }
+  const b = e.target.closest('[data-addmedia]'); if (!b) return;
+  const m = media.get(b.dataset.addmedia); if (m) placeMedia(m, null, state.time);
+});
+$('#mediaList').addEventListener('dragstart', e => {
+  const li = e.target.closest('[data-media]'); if (!li) return;
+  e.dataTransfer.setData('text/plain', li.dataset.media); e.dataTransfer.effectAllowed = 'copy';
+});
+const dz = $('#dropZone');
+['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, () => dz.classList.remove('over')));
+document.addEventListener('dragover', e => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) e.preventDefault(); });
+document.addEventListener('drop', async e => {
+  if (e.defaultPrevented) return;
+  const files = [...((e.dataTransfer && e.dataTransfer.files) || [])]; if (!files.length) return;
+  e.preventDefault(); await importFiles(files);
+});
+const typing = t => t && t.closest && t.closest('input,textarea,select,[contenteditable]');
+document.addEventListener('keydown', e => {
+  if (!modal.hidden) { if (e.key === 'Escape' && !exporting) closeModal(); return; }
+  if (!projModal.hidden) { if (e.key === 'Escape') projModal.hidden = true; return; }
+  if (typing(e.target)) return;
+  const mod = e.metaKey || e.ctrlKey; const k = e.key.toLowerCase();
+  if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+  else if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+  else if (mod && k === 'y') { e.preventDefault(); redo(); }
+  else if (mod && k === 's') { e.preventDefault(); saveProject(); }
+  else if (mod && k === 'd') { e.preventDefault(); duplicateSelected(); }
+  else if (!mod && k === 's') { e.preventDefault(); splitSelected(); }
+  else if (e.key === 'Delete' || e.key === 'Backspace') { if (state.selected) { e.preventDefault(); deleteSelected(); } }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); step(e.shiftKey ? -FPS : -1); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); step(e.shiftKey ? FPS : 1); }
+  else if (e.key === 'Home') { e.preventDefault(); pause(); seek(0); }
+  else if (e.key === 'Escape') select(null);
+});
+document.addEventListener('keyup', e => { if (e.code === 'Space' && e.target.tagName === 'BUTTON') e.preventDefault(); });
+
+/* ---------- example project ---------- */
+function seedDemo() {
+  state.tracks = [
+    { id: 't-title', name: 'Titles', kind: 'visual', off: false },
+    { id: 't-v2', name: 'Video 2', kind: 'visual', off: false },
+    { id: 't-v1', name: 'Video 1', kind: 'visual', off: false },
+    { id: 't-a1', name: 'Music', kind: 'audio', off: false },
+    { id: 't-a2', name: 'Audio 2', kind: 'audio', off: false }
+  ];
+  state.clips = [
+    { id: nid('c'), trackId: 't-v1', type: 'gen', start: 0, dur: 9, in: 0, props: Object.assign(defaultProps('gen', 'gradient'), { colorA: '#1d2550', colorB: '#d9783f', speed: 0.8, fadeOut: 0.8 }) },
+    { id: nid('c'), trackId: 't-v2', type: 'gen', start: 1.2, dur: 7.8, in: 0, props: Object.assign(defaultProps('gen', 'bars'), { color: '#fff3df', count: 36, opacity: 0.85, y: 0.2, fadeIn: 0.5, fadeOut: 0.8 }) },
+    { id: nid('c'), trackId: 't-title', type: 'text', start: 0.4, dur: 4.6, in: 0, props: Object.assign(defaultProps('text'), { text: 'NEW SINGLE', size: 150, y: -0.14, fadeIn: 0.5, fadeOut: 0.4 }) },
+    { id: nid('c'), trackId: 't-title', type: 'text', start: 5.2, dur: 3.8, in: 0, props: Object.assign(defaultProps('text'), { text: 'out friday', font: 'serif', weight: 400, size: 96, y: -0.14, fadeIn: 0.4, fadeOut: 0.8 }) }
+  ];
+}
+
+seedDemo();
+updatePlayBtn(); updateUndo();
+setAspect('16:9');
+renderBin(); renderTimeline(); renderInspector();
+try { new ResizeObserver(() => fitCanvas()).observe(stageView); } catch (e) { window.addEventListener('resize', fitCanvas); }
+let rt = null; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(renderTimeline, 150); });
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

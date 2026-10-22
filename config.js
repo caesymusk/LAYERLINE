@@ -9,3 +9,8 @@ window.LAYERLINE_CONFIG = {
   // Project number from Google Cloud (Settings), digits only
   googleAppId: '350845326138'
 };
+window.LAYERLINE_CONFIG = {
+  googleClientId: '1234567890-abc123.apps.googleusercontent.com',
+  googleApiKey: 'AIzaSy...',
+  googleAppId: '1234567890'
+};

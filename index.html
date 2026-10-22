@@ -197,6 +197,52 @@ kbd{font-family:var(--font-mono);font-size:10.5px;background:var(--panel-2);bord
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 [hidden]{display:none!important}
+body.at-home .ed-only{display:none!important}
+body:not(.at-home) .home-only{display:none!important}
+.brand{cursor:pointer;border-radius:6px}
+.home{position:fixed;left:0;right:0;bottom:0;top:62px;z-index:30;overflow:auto;background:var(--bg);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-bottom:calc(28px + env(safe-area-inset-bottom,0px))}
+.home-inner{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.home-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;padding-top:6px}
+.home-head h1{margin:0;font-family:var(--font-display);font-weight:800;font-size:34px;letter-spacing:-.02em;line-height:1.05}
+.home-head p{margin:6px 0 0}
+.home-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.home-actions input{height:32px;width:220px;max-width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:0 10px}
+.home-current{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 14px;border:1px solid color-mix(in srgb,var(--accent) 40%,var(--line));background:color-mix(in srgb,var(--accent) 7%,var(--panel));border-radius:10px}
+.hc-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.hc-label{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+.hc-text b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hc-status{font-size:12px;color:var(--muted)}
+.home-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.pcard{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;min-width:0}
+.pcard:hover{border-color:var(--line-strong)}
+.pthumb{position:relative;display:block;width:100%;aspect-ratio:16/9;background:#000;border:0;padding:0;border-radius:10px 10px 0 0;overflow:hidden;cursor:pointer}
+.pthumb img{width:100%;height:100%;object-fit:contain;display:block}
+.pph-empty{position:absolute;inset:0;display:grid;place-items:center;color:var(--faint);font-size:12px;background:repeating-linear-gradient(135deg,var(--panel-2) 0 10px,var(--panel) 10px 20px)}
+.plive{position:absolute;left:8px;top:8px;background:rgba(0,0,0,.72);color:#7fe39c;font-size:11px;font-weight:600;padding:3px 8px;border-radius:999px}
+.plen{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.72);color:#fff;font-family:var(--font-mono);font-size:10.5px;padding:2px 6px;border-radius:4px}
+.pmeta{padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.pname-row{display:flex;align-items:center;gap:6px;min-width:0}
+.pname{margin:0;font-size:14px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pname-input{flex:1;min-width:0;height:28px;background:var(--panel-2);border:1px solid var(--accent);border-radius:5px;padding:0 8px;font-weight:600}
+.pmenu-btn{width:28px;height:28px;font-size:16px;line-height:1;flex:none}
+.psub{margin:0;color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pavs{display:flex;align-items:center;min-height:24px;padding-left:6px}
+.pav{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--pc,var(--panel-3));color:#141414;font-weight:700;font-size:10.5px;border:2px solid var(--panel);margin-left:-6px;flex:none}
+.pav.more{background:var(--panel-3);color:var(--fg)}
+.person .pav{margin-left:0;border-color:var(--panel-2)}
+.psolo{font-size:12px;color:var(--faint);margin-left:-6px}
+.pmenu{position:absolute;right:10px;bottom:46px;z-index:5;min-width:170px;background:var(--panel-2);border:1px solid var(--line-strong);border-radius:8px;padding:4px;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.pmenu[hidden]{display:none}
+.pmenu button{text-align:left;background:transparent;border:0;color:var(--fg);padding:8px 10px;border-radius:5px;cursor:pointer;font-size:13px}
+.pmenu button:hover,.pmenu button:focus-visible{background:var(--panel-3)}
+.pmenu button.danger{color:var(--danger)}
+.home-empty{grid-column:1/-1;padding:36px 4px;display:flex;flex-direction:column;gap:10px;max-width:520px}
+.home-empty h2{margin:0;font-family:var(--font-display);font-weight:800;font-size:22px}
+.home-empty p{margin:0}
+.drow.person{grid-template-columns:28px minmax(0,1fr) auto auto}
+.prole{font-size:12px;color:var(--muted)}
+.prole select{height:28px}
+@media (max-width:600px){.home-head h1{font-size:28px}.home-actions input{width:100%}}
 /* tools + smart cursors */
 .clip .h{cursor:inherit}
 .clip[data-zone="trim-l"]{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M15%204H12V20H15%22%20stroke%3D%22%23111%22%20stroke-width%3D%224%22/%3E%3Cpath%20d%3D%22M15%204H12V20H15%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.8%22/%3E%3Cpath%20d%3D%22M3%2012H9M5.5%209.5L3%2012l2.5%202.5%22%20stroke%3D%22%23111%22%20stroke-width%3D%224%22/%3E%3Cpath%20d%3D%22M3%2012H9M5.5%209.5L3%2012l2.5%202.5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.8%22/%3E%3C/svg%3E") 12 12, w-resize}
@@ -260,25 +306,26 @@ button.cstat:hover{color:var(--accent);border-color:var(--accent)}
 
 <div class="app" id="app">
   <header class="top">
-    <div class="brand">
+    <div class="brand" id="brandHome" role="button" tabindex="0" title="Your projects">
       <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="2" y="3" width="14" height="4" rx="1.5" fill="#7b55b3"/><rect x="5" y="9" width="15" height="4" rx="1.5" fill="#3a679f"/><rect x="2" y="15" width="12" height="4" rx="1.5" fill="#3a8a5e"/><rect x="10" y="1" width="2" height="20" rx="1" fill="#f0b13e"/></svg>
       Layerline
     </div>
-    <input class="proj" id="projName" type="text" value="Untitled project" aria-label="Project name">
+    <input class="proj ed-only" id="projName" type="text" value="Untitled project" aria-label="Project name">
     <div class="spacer"></div>
     <span class="cstatus" id="cloudStatus" hidden role="status"></span>
-    <button class="btn icon" id="undoBtn" title="Undo (Ctrl+Z)" aria-label="Undo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
-    <button class="btn icon" id="redoBtn" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
-    <select id="aspect" aria-label="Video format">
+    <button class="btn icon ed-only" id="undoBtn" title="Undo (Ctrl+Z)" aria-label="Undo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+    <button class="btn icon ed-only" id="redoBtn" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
+    <select id="aspect" class="ed-only" aria-label="Video format">
       <option value="16:9">16:9 Landscape</option>
       <option value="9:16">9:16 Vertical (Reels, Shorts, TikTok)</option>
       <option value="1:1">1:1 Square</option>
     </select>
-    <div class="peers" id="peers" hidden></div>
-    <button class="btn" id="projectsBtn">Projects</button>
-    <button class="btn" id="saveBtn" title="Save project to Google Drive (Ctrl+S)">Save to Drive</button>
-    <button class="btn" id="shareBtn" title="Share this project with another Google account">Share</button>
-    <button class="btn primary" id="exportBtn">
+    <div class="peers ed-only" id="peers" hidden></div>
+    <button class="btn ed-only" id="projectsBtn" title="See and manage your projects">Projects</button>
+    <button class="btn home-only" id="toEditorBtn">Back to editor</button>
+    <button class="btn ed-only" id="saveBtn" title="Save project to Google Drive (Ctrl+S)">Save to Drive</button>
+    <button class="btn ed-only" id="shareBtn" title="Manage who can open and edit this project">Share</button>
+    <button class="btn primary ed-only" id="exportBtn">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>
       Export video
     </button>
@@ -357,6 +404,26 @@ button.cstat:hover{color:var(--accent);border-color:var(--accent)}
   </section>
 </div>
 
+<section class="home" id="home" hidden aria-label="Your projects">
+  <div class="home-inner">
+    <header class="home-head">
+      <div><h1>Projects</h1><p class="muted" id="homeSub"></p></div>
+      <div class="home-actions">
+        <input type="search" id="homeSearch" placeholder="Search projects" aria-label="Search projects">
+        <div class="seg" role="group" aria-label="Show">
+          <button class="btn" type="button" data-hfilter="all" aria-pressed="true">All</button>
+          <button class="btn" type="button" data-hfilter="mine" aria-pressed="false">Mine</button>
+          <button class="btn" type="button" data-hfilter="shared" aria-pressed="false">Shared with me</button>
+        </div>
+        <button class="btn icon" id="homeRefresh" type="button" title="Refresh" aria-label="Refresh"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
+        <button class="btn" id="homeOpenDrive" type="button" title="Open a project file from Google Drive">Open from Drive</button>
+        <button class="btn primary" id="homeNew" type="button">New project</button>
+      </div>
+    </header>
+    <div class="home-current" id="homeCurrent" hidden></div>
+    <div class="home-grid" id="homeGrid"></div>
+  </div>
+</section>
 <div id="mediaPool" aria-hidden="true"></div>
 <div id="peerLayer" aria-hidden="true"></div>
 
@@ -385,15 +452,22 @@ button.cstat:hover{color:var(--accent);border-color:var(--accent)}
 </div>
 <div class="modal" id="shareModal" hidden role="dialog" aria-modal="true" aria-labelledby="sTitle">
   <div class="sheet">
-    <h3 id="sTitle">Share project</h3>
-    <p class="muted">Google Drive emails them a note. To open it, they go to Layerline, sign in with that Google account, and choose Projects → Open shared project. While Layerline is in testing, their account must be on your test-user list in Google Cloud.</p>
+    <h3 id="sTitle">People</h3>
+    <p class="muted">Everyone here can open the project and its clips, and edit together live. Google Drive emails new people. While Layerline is in testing, they also need to be on your test-user list in Google Cloud.</p>
     <form class="share-form" id="sForm">
-      <input type="email" id="sEmail" placeholder="name@gmail.com" required aria-label="Email address" autocomplete="email">
+      <input type="email" id="sEmail" placeholder="Add someone: name@gmail.com" required aria-label="Email address" autocomplete="email">
       <select id="sRole" aria-label="Access"><option value="writer">Can edit</option><option value="reader">Can view</option></select>
-      <button class="btn primary" type="submit" id="sSubmit">Share</button>
+      <button class="btn primary" type="submit" id="sSubmit">Add</button>
     </form>
     <ul class="dlist" id="sList"></ul>
-    <div class="row-btns"><button class="btn" id="sClose">Close</button></div>
+    <div class="row-btns"><button class="btn" id="sClose">Done</button></div>
+  </div>
+</div>
+<div class="modal" id="confirmModal" hidden role="dialog" aria-modal="true" aria-labelledby="cTitle">
+  <div class="sheet">
+    <h3 id="cTitle"></h3>
+    <p class="muted" id="cBody"></p>
+    <div class="row-btns"><button class="btn" id="cCancel">Cancel</button><button class="btn primary" id="cOk" style="background:var(--danger);color:#1a0b09">Delete</button></div>
   </div>
 </div>
 <div class="modal" id="missModal" hidden role="dialog" aria-modal="true" aria-labelledby="mTitle">
@@ -1335,6 +1409,7 @@ async function signIn() {
   try { const r = await gfetch(`${DRIVE_API}/about?fields=user(displayName,emailAddress,photoLink)`); cloud.user = (await r.json()).user || {}; }
   catch (e) { cloud.user = cloud.user || {}; }
   renderCloud(); renderBin();
+  if (!homeEl.hidden) loadHome();
   return true;
 }
 function signOut() {
@@ -1611,7 +1686,8 @@ function projectData() {
     name: $('#projName').value.trim() || 'Untitled project',
     aspect: state.aspect, tracks: state.tracks, clips: state.clips,
     media: [...media.values()].map(m => ({ id: m.id, name: m.name, type: m.type, driveId: m.driveId || null })),
-    members: cloud.members, sharedIds: [...cloud.sharedIds]
+    members: cloud.members, sharedIds: [...cloud.sharedIds],
+    thumb: stageThumb()
   };
 }
 let saving = false;
@@ -1770,17 +1846,7 @@ async function shareMediaWithMembers() {
   }
   return failed;
 }
-function renderShareList() {
-  const list = $('#sList'), others = cloud.members.filter(e => e && e !== myEmail());
-  if (!others.length) { list.innerHTML = '<li class="dmsg">This project isn’t shared with anyone yet.</li>'; return; }
-  list.innerHTML = '';
-  for (const e of others) {
-    const li = document.createElement('li'); li.className = 'drow prow';
-    li.innerHTML = '<span class="nm"><b></b><span>Has access</span></span><span></span><span></span>';
-    li.querySelector('b').textContent = e;
-    list.appendChild(li);
-  }
-}
+function renderShareList() { if (home.people) renderPeople(); }
 let sharing = false;
 async function shareProject(email, role) {
   if (sharing) return;
@@ -1793,11 +1859,11 @@ async function shareProject(email, role) {
   try {
     if (myEmail() && !cloud.members.includes(myEmail())) cloud.members.push(myEmail());
     const isNew = !cloud.members.includes(email);
-    if (isNew) cloud.members.push(email);
+    if (isNew) { cloud.members.push(email); cloud.sharedIds = new Set(); } // a new person needs every clip shared again
     if (!(await saveProject({ quiet: true })) || !cloud.projectFileId) throw new Error('The project couldn’t be saved first.');
     const link = location.href.split('#')[0].split('?')[0];
     liveAddMember(email);
-    await grant(cloud.projectFileId, email, role, true, `I shared a Layerline video project with you. Open ${link} , sign in with this Google account, then choose Projects → Open shared project.`);
+    await grant(cloud.projectFileId, email, role, true, `I shared a Layerline video project with you. Open ${link} , sign in with this Google account, and you'll find it in your projects.`);
     j.done(`Shared with ${email}. Google Drive will email them.`);
     $('#sEmail').value = '';
   } catch (e) { j.fail(`Couldn’t share the project. ${e.message}`); }
@@ -1865,9 +1931,10 @@ async function pickMissing() {
 }
 $('#shareBtn').addEventListener('click', async () => {
   if (!(await ensureSignedIn())) return;
-  renderShareList(); shareModal.hidden = false; $('#sEmail').focus();
+  try { const it = await currentItem(); if (it) openPeople(it); else toast('Save the project first, then share it.'); }
+  catch (e) { toast(`Couldn\u2019t open sharing. ${e.message}`); }
 });
-$('#sForm').addEventListener('submit', e => { e.preventDefault(); shareProject($('#sEmail').value, $('#sRole').value); });
+$('#sForm').addEventListener('submit', e => { e.preventDefault(); if (home.people) addPerson(home.people, $('#sEmail').value, $('#sRole').value); });
 $('#sClose').addEventListener('click', () => { shareModal.hidden = true; });
 $('#pShared').addEventListener('click', openSharedProject);
 $('#mPick').addEventListener('click', pickMissing);
@@ -2146,6 +2213,364 @@ function renderPeerChips() {
     [...byEmail.values()].map(p => `<span class="peer" style="--pc:${esc(p.color || colorFor(p.email))}" title="${esc(p.email || '')} is editing">${esc(((p.name || p.email || '?').trim()[0] || '?').toUpperCase())}</span>`).join('');
 }
 
+/* ---------- Home: see and manage projects ---------- */
+const homeEl = $('#home'), homeGrid = $('#homeGrid');
+const home = { items: [], cache: new Map(), filter: 'all', q: '', loading: false, live: new Map(), people: null, confirmFn: null };
+const PROJECT_FIELDS = 'files(id,name,modifiedTime,ownedByMe,owners(displayName,emailAddress),capabilities(canEdit,canShare,canTrash,canRename),lastModifyingUser(displayName,me))';
+const stripExt = n => String(n || 'Untitled').replace(/\.layerline\.json$/i, '');
+async function runPool(items, n, fn) {
+  let i = 0;
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length) { const it = items[i++]; try { await fn(it); } catch (e) {} } }));
+}
+function stageThumb() {
+  try {
+    const w = 320, h = Math.round(w * H / W);
+    const c = document.createElement('canvas'); c.width = w; c.height = Math.min(h, 400);
+    c.getContext('2d').drawImage(canvas, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.62);
+  } catch (e) { return null; }
+}
+function placeHome() { homeEl.style.top = `${Math.round($('.top').getBoundingClientRect().bottom + 10)}px`; }
+async function showHome() {
+  // leaving the editor: keep your work
+  if (cloud.user && cloud.projectFileId && dirty && !live.room) saveProject({ quiet: true });
+  document.body.classList.add('at-home'); homeEl.hidden = false; placeHome();
+  try { localStorage.setItem('layerline.view', 'home'); } catch (e) {}
+  renderHomeCurrent();
+  if (cloud.user) loadHome(); else renderHome();
+}
+function hideHome() {
+  document.body.classList.remove('at-home'); homeEl.hidden = true;
+  try { localStorage.setItem('layerline.view', 'editor'); } catch (e) {}
+  fitCanvas(); renderTimeline();
+}
+function renderHomeCurrent() {
+  const box = $('#homeCurrent');
+  const hasWork = state.clips.length > 0;
+  if (!hasWork) { box.hidden = true; return; }
+  box.hidden = false;
+  const name = $('#projName').value.trim() || 'Untitled project';
+  const status = !cloud.projectFileId ? 'Not saved to Drive yet' : live.room ? 'Live now' : dirty ? 'Unsaved changes' : 'Saved';
+  box.innerHTML = `<div class="hc-text"><span class="hc-label">Open in the editor</span><b></b><span class="hc-status"></span></div><button class="btn primary" id="hcBack" type="button">Back to editor</button>`;
+  box.querySelector('b').textContent = name; box.querySelector('.hc-status').textContent = status;
+  $('#hcBack').addEventListener('click', hideHome);
+}
+async function loadHome() {
+  if (home.loading) return;
+  home.loading = true; renderHome();
+  try {
+    const q = encodeURIComponent("appProperties has { key='layerline' and value='project' } and trashed=false");
+    const r = await gfetch(`${DRIVE_API}/files?q=${q}&orderBy=modifiedTime desc&pageSize=100&supportsAllDrives=true&includeItemsFromAllDrives=true&fields=${encodeURIComponent(PROJECT_FIELDS)}`);
+    const files = (await r.json()).files || [];
+    home.items = files.map(f => {
+      const c = home.cache.get(f.id);
+      return { id: f.id, name: stripExt(f.name), f, data: c && c.modifiedTime === f.modifiedTime ? c.data : null };
+    });
+    home.error = null;
+  } catch (e) { home.error = e.message; }
+  home.loading = false; renderHome();
+  // details (thumbnail, people, length) come from each project file
+  await runPool(home.items.filter(it => !it.data), 4, async it => {
+    const r = await gfetch(`${DRIVE_API}/files/${encodeURIComponent(it.id)}?alt=media`);
+    it.data = await r.json(); home.cache.set(it.id, { modifiedTime: it.f.modifiedTime, data: it.data });
+    renderCard(it);
+  });
+  loadLiveBadges();
+}
+async function loadLiveBadges() {
+  if (!FB || !cloud.user) return;
+  let db; try { db = await initFirebase(); } catch (e) { return; }
+  if (!db) return;
+  await runPool(home.items, 4, async it => {
+    const s = await db.ref(`rooms/${it.id}/presence`).get();
+    const v = s.val() || {};
+    const others = Object.values(v).filter(p => p && p.email && p.email !== myEmail());
+    home.live.set(it.id, others); renderCard(it);
+  });
+}
+function visibleItems() {
+  const q = home.q.trim().toLowerCase();
+  return home.items.filter(it => (home.filter === 'all' || (home.filter === 'mine') === !!it.f.ownedByMe) && (!q || it.name.toLowerCase().includes(q)));
+}
+function renderHome() {
+  $('#homeSub').textContent = cloud.user ? `Signed in as ${myEmail()} · projects live in the Layerline folder of Google Drive` : 'Sign in with Google to see your projects';
+  if (!cloud.user) {
+    homeGrid.innerHTML = `<div class="home-empty"><h2>Your projects live in Google Drive</h2><p class="muted">Sign in to see the projects you made and the ones shared with you.</p><div class="row-btns" style="justify-content:flex-start"><button class="btn gbtn" id="heSign" type="button">Sign in with Google</button><button class="btn" id="heTry" type="button">Try the editor</button></div></div>`;
+    $('#heSign').addEventListener('click', async () => { if (await ensureSignedIn()) loadHome(); });
+    $('#heTry').addEventListener('click', hideHome);
+    return;
+  }
+  if (home.loading && !home.items.length) { homeGrid.innerHTML = '<div class="home-empty"><p class="muted">Loading your projects…</p></div>'; return; }
+  if (home.error) { homeGrid.innerHTML = `<div class="home-empty"><p class="dmsg err"></p><button class="btn" id="heRetry" type="button">Try again</button></div>`; homeGrid.querySelector('.err').textContent = `Couldn’t load your projects. ${home.error}`; $('#heRetry').addEventListener('click', loadHome); return; }
+  const list = visibleItems();
+  if (!list.length) {
+    const none = !home.items.length;
+    homeGrid.innerHTML = `<div class="home-empty"><h2>${none ? 'No projects yet' : 'Nothing matches'}</h2><p class="muted">${none ? 'Start one, then use Save to Drive. Projects shared with you show up here too.' : 'Try a different search or filter.'}</p>${none ? '<button class="btn primary" id="heNew" type="button">New project</button>' : ''}</div>`;
+    if (none) $('#heNew').addEventListener('click', () => { newProject(); hideHome(); });
+    return;
+  }
+  homeGrid.innerHTML = '';
+  for (const it of list) { const el = document.createElement('article'); el.className = 'pcard'; el.dataset.id = it.id; homeGrid.appendChild(el); renderCard(it); }
+}
+function projLength(d) { let e = 0; for (const c of (d && d.clips) || []) e = Math.max(e, c.start + c.dur); return e; }
+function avatarsHTML(emails) {
+  return emails.slice(0, 5).map(e => `<span class="pav" style="--pc:${esc(colorFor(e))}" title="${esc(e)}">${esc((e[0] || '?').toUpperCase())}</span>`).join('') + (emails.length > 5 ? `<span class="pav more">+${emails.length - 5}</span>` : '');
+}
+function renderCard(it) {
+  const el = homeGrid.querySelector(`.pcard[data-id="${CSS.escape(it.id)}"]`); if (!el) return;
+  const d = it.data, f = it.f;
+  const owner = f.ownedByMe ? 'You' : ((f.owners && f.owners[0] && (f.owners[0].displayName || f.owners[0].emailAddress)) || 'Someone');
+  const when = f.modifiedTime ? new Date(f.modifiedTime).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+  const members = d && Array.isArray(d.members) ? d.members : [];
+  const liveNow = home.live.get(it.id) || [];
+  const vertical = d && d.aspect === '9:16';
+  el.innerHTML = `
+    <button class="pthumb${vertical ? ' tall' : ''}" type="button" data-act="open" aria-label="Open ${esc(it.name)}">
+      ${d && d.thumb ? `<img alt="" src="${esc(d.thumb)}">` : `<span class="pph-empty">${d ? 'No preview yet' : ''}</span>`}
+      ${liveNow.length ? `<span class="plive">● ${liveNow.length} editing now</span>` : ''}
+      ${d ? `<span class="plen">${esc(d.aspect || '16:9')} · ${fmtDur(projLength(d))}</span>` : ''}
+    </button>
+    <div class="pmeta">
+      <div class="pname-row"><h3 class="pname"></h3><button class="btn icon pmenu-btn" type="button" data-act="menu" aria-label="Options for ${esc(it.name)}" aria-haspopup="true">⋯</button></div>
+      <p class="psub">${esc(f.ownedByMe ? `Edited ${when}` : `Shared by ${owner} · ${when}`)}</p>
+      <div class="pavs">${members.length > 1 ? avatarsHTML(members) : '<span class="psolo">Only you</span>'}</div>
+    </div>
+    <div class="pmenu" hidden role="menu">
+      <button type="button" role="menuitem" data-act="open">Open</button>
+      ${f.capabilities && f.capabilities.canRename !== false && f.capabilities.canEdit ? '<button type="button" role="menuitem" data-act="rename">Rename</button>' : ''}
+      <button type="button" role="menuitem" data-act="people">People</button>
+      <button type="button" role="menuitem" data-act="dup">Duplicate</button>
+      ${f.ownedByMe ? '<button type="button" role="menuitem" class="danger" data-act="delete">Delete</button>' : '<button type="button" role="menuitem" class="danger" data-act="leave">Leave project</button>'}
+    </div>`;
+  el.querySelector('.pname').textContent = it.name;
+  if (!f.ownedByMe || members.length <= 1) { /* keep */ }
+}
+homeGrid.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const card = b.closest('.pcard'); const it = card && home.items.find(x => x.id === card.dataset.id); if (!it) return;
+  const act = b.dataset.act;
+  homeGrid.querySelectorAll('.pmenu').forEach(m => { if (m !== card.querySelector('.pmenu') || act !== 'menu') m.hidden = true; });
+  if (act === 'menu') { const m = card.querySelector('.pmenu'); m.hidden = !m.hidden; if (!m.hidden) m.querySelector('button').focus(); return; }
+  if (act === 'open') { openFromHome(it); return; }
+  if (act === 'rename') { startRename(it, card); return; }
+  if (act === 'people') { openPeople(it); return; }
+  if (act === 'dup') { duplicateProject(it); return; }
+  if (act === 'delete') { confirmAction(`Delete “${it.name}”?`, 'It moves to your Google Drive trash, where you can restore it for 30 days. Its video files stay in Drive, and everyone it’s shared with loses it from their list.', 'Delete project', () => deleteProject(it)); return; }
+  if (act === 'leave') { confirmAction(`Leave “${it.name}”?`, 'It disappears from your projects and you lose access. The owner can add you again.', 'Leave project', () => leaveProject(it)); }
+});
+document.addEventListener('click', e => { if (!e.target.closest('.pcard')) homeGrid.querySelectorAll('.pmenu').forEach(m => { m.hidden = true; }); });
+async function openFromHome(it) {
+  if (it.id === cloud.projectFileId) { hideHome(); return; }
+  hideHome(); await loadProject(it.id);
+}
+
+// rename (inline on the card)
+function startRename(it, card) {
+  const h = card.querySelector('.pname');
+  const input = document.createElement('input'); input.className = 'pname-input'; input.value = it.name; input.setAttribute('aria-label', 'Project name');
+  h.replaceWith(input); input.focus(); input.select();
+  let done = false;
+  const finish = async save => {
+    if (done) return; done = true;
+    const v = input.value.trim();
+    if (!save || !v || v === it.name) { renderCard(it); return; }
+    const old = it.name; it.name = v; renderCard(it);
+    try { await renameProject(it, v); toast(`Renamed to “${v}”`); }
+    catch (e) { it.name = old; renderCard(it); toast(`Couldn’t rename the project. ${e.message}`); }
+  };
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') finish(true); if (e.key === 'Escape') finish(false); e.stopPropagation(); });
+  input.addEventListener('blur', () => finish(true));
+}
+async function readProject(id) { const r = await gfetch(`${DRIVE_API}/files/${encodeURIComponent(id)}?alt=media`); return r.json(); }
+async function writeProject(id, d) { await gfetch(`${UPLOAD_API}/files/${encodeURIComponent(id)}?uploadType=media`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) }); }
+async function liveDb() { if (!FB) return null; try { return await initFirebase(); } catch (e) { return null; } }
+async function renameProject(it, name) {
+  await gfetch(`${DRIVE_API}/files/${encodeURIComponent(it.id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: `${name}.layerline.json` }) });
+  if (it.id === cloud.projectFileId) { $('#projName').value = name; dirty = true; renderHomeCurrent(); }
+  const d = await readProject(it.id); d.name = name; await writeProject(it.id, d);
+  it.data = d; home.cache.set(it.id, { modifiedTime: null, data: d });
+  // keep the live session in step, or the next person to open it would bring back the old name
+  const db = await liveDb();
+  if (db) { try { const s = await db.ref(`rooms/${it.id}/doc/meta`).get(); if (s.exists()) await db.ref(`rooms/${it.id}/doc/meta`).set(JSON.stringify({ name, aspect: d.aspect || '16:9' })); } catch (e) {} }
+}
+
+// the newest version of a project: the open editor, else the live session, else the saved file
+async function latestProject(it) {
+  if (it.id === cloud.projectFileId) return JSON.parse(JSON.stringify(projectData()));
+  const d = await readProject(it.id);
+  const db = await liveDb();
+  if (db) {
+    try {
+      const s = await db.ref(`rooms/${it.id}/doc`).get(); const doc = s.val();
+      if (doc) {
+        if (doc.meta) { const m = JSON.parse(doc.meta); d.name = m.name || d.name; d.aspect = m.aspect || d.aspect; }
+        if (doc.tracks) d.tracks = JSON.parse(doc.tracks);
+        if (doc.clips) d.clips = Object.values(doc.clips).map(x => JSON.parse(x));
+        if (doc.media) { const have = new Set((d.media || []).map(m => m.id)); for (const [id, v] of Object.entries(doc.media)) if (!have.has(id)) d.media.push(Object.assign({ id }, JSON.parse(v))); }
+      }
+    } catch (e) {}
+  }
+  return d;
+}
+async function duplicateProject(it) {
+  const j = job(`Duplicating “${it.name}”`);
+  try {
+    const d = await latestProject(it);
+    d.name = `${it.name} copy`; d.members = []; d.sharedIds = [];
+    const folder = await ensureFolder();
+    await uploadResumable(new Blob([JSON.stringify(d)], { type: 'application/json' }), { name: `${d.name}.layerline.json`, parents: [folder], appProperties: { layerline: 'project' } }, j.set);
+    j.done(`Made “${d.name}”. It’s only shared with you.`);
+    loadHome();
+  } catch (e) { j.fail(`Couldn’t duplicate the project. ${e.message}`); }
+}
+async function deleteProject(it) {
+  const j = job(`Deleting “${it.name}”`);
+  try {
+    await gfetch(`${DRIVE_API}/files/${encodeURIComponent(it.id)}?supportsAllDrives=true`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true }) });
+    const db = await liveDb(); if (db) { try { await db.ref(`rooms/${it.id}`).remove(); } catch (e) {} }
+    if (it.id === cloud.projectFileId) { newProject(); }
+    home.items = home.items.filter(x => x !== it); renderHome(); renderHomeCurrent();
+    j.done(`Deleted “${it.name}”. You can restore it from your Drive trash.`);
+  } catch (e) { j.fail(`Couldn’t delete the project. ${e.message}`); }
+}
+async function leaveProject(it) {
+  const j = job(`Leaving “${it.name}”`);
+  try {
+    const me = myEmail();
+    let d = null;
+    try { d = await readProject(it.id); d.members = (d.members || []).filter(e => e !== me); if (it.f.capabilities && it.f.capabilities.canEdit) await writeProject(it.id, d); } catch (e) {}
+    // give up access to the project's clips too
+    for (const m of (d && d.media) || []) {
+      if (!m.driveId) continue;
+      try { const ps = await listPerms(m.driveId); const hit = ps.find(p => (p.emailAddress || '').toLowerCase() === me && p.role !== 'owner'); if (hit) await gfetch(`${DRIVE_API}/files/${encodeURIComponent(m.driveId)}/permissions/${hit.id}?supportsAllDrives=true`, { method: 'DELETE' }); } catch (e) {}
+    }
+    const db = await liveDb(); if (db) { try { await db.ref(`rooms/${it.id}/members/${encKey(me)}`).remove(); } catch (e) {} }
+    const perms = await listPerms(it.id);
+    const mine = perms.find(p => (p.emailAddress || '').toLowerCase() === me);
+    if (mine) await gfetch(`${DRIVE_API}/files/${encodeURIComponent(it.id)}/permissions/${mine.id}?supportsAllDrives=true`, { method: 'DELETE' });
+    if (it.id === cloud.projectFileId) newProject();
+    home.items = home.items.filter(x => x !== it); renderHome(); renderHomeCurrent();
+    j.done(`You left “${it.name}”.`);
+  } catch (e) { j.fail(e.status === 403 ? 'Drive won’t let you remove yourself from this one. Ask the owner to remove you.' : `Couldn’t leave the project. ${e.message}`); }
+}
+
+// people
+async function listPerms(id) {
+  const r = await gfetch(`${DRIVE_API}/files/${encodeURIComponent(id)}/permissions?supportsAllDrives=true&fields=${encodeURIComponent('permissions(id,type,role,emailAddress,displayName)')}`);
+  return ((await r.json()).permissions || []).filter(p => p.type === 'user');
+}
+async function currentItem() {
+  if (!cloud.projectFileId) { if (!(await saveProject({ quiet: true })) || !cloud.projectFileId) return null; }
+  const r = await gfetch(`${DRIVE_API}/files/${encodeURIComponent(cloud.projectFileId)}?supportsAllDrives=true&fields=${encodeURIComponent('id,name,ownedByMe,owners(displayName,emailAddress),capabilities(canEdit,canShare,canTrash,canRename)')}`);
+  const f = await r.json();
+  return { id: f.id, name: stripExt(f.name), f, data: null };
+}
+async function openPeople(it) {
+  home.people = it;
+  $('#sTitle').textContent = `People on “${it.name}”`;
+  const canShare = !it.f.capabilities || it.f.capabilities.canShare !== false;
+  $('#sForm').hidden = !canShare;
+  $('#sList').innerHTML = '<li class="dmsg">Loading…</li>';
+  shareModal.hidden = false;
+  if (canShare) $('#sEmail').focus();
+  await renderPeople();
+}
+async function renderPeople() {
+  const it = home.people; if (!it) return;
+  const list = $('#sList');
+  let perms;
+  try { perms = await listPerms(it.id); }
+  catch (e) { list.innerHTML = '<li class="dmsg err"></li>'; list.firstChild.textContent = `Couldn’t load who has access. ${e.message}`; return; }
+  const canShare = !it.f.capabilities || it.f.capabilities.canShare !== false;
+  perms.sort((a, b) => (a.role === 'owner' ? -1 : b.role === 'owner' ? 1 : 0));
+  list.innerHTML = '';
+  for (const p of perms) {
+    const email = (p.emailAddress || '').toLowerCase(), me = email === myEmail();
+    const li = document.createElement('li'); li.className = 'drow person';
+    li.innerHTML = `<span class="pav" style="--pc:${esc(colorFor(email))}">${esc((email[0] || '?').toUpperCase())}</span><span class="nm"><b></b><span></span></span><span class="prole"></span><span class="pact"></span>`;
+    li.querySelector('b').textContent = (p.displayName || email) + (me ? ' (you)' : '');
+    li.querySelector('.nm span').textContent = email;
+    const roleBox = li.querySelector('.prole'), act = li.querySelector('.pact');
+    if (p.role === 'owner' || !canShare || me) roleBox.textContent = p.role === 'owner' ? 'Owner' : p.role === 'writer' ? 'Can edit' : 'Can view';
+    else {
+      const sel = document.createElement('select'); sel.setAttribute('aria-label', `Access for ${email}`);
+      sel.innerHTML = '<option value="writer">Can edit</option><option value="reader">Can view</option>';
+      sel.value = p.role === 'writer' ? 'writer' : 'reader';
+      sel.addEventListener('change', async () => {
+        try { await gfetch(`${DRIVE_API}/files/${encodeURIComponent(it.id)}/permissions/${p.id}?supportsAllDrives=true`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: sel.value }) }); toast(`${email} ${sel.value === 'writer' ? 'can edit' : 'can view'} now`); }
+        catch (e) { toast(`Couldn’t change access. ${e.message}`); renderPeople(); }
+      });
+      roleBox.appendChild(sel);
+      const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'btn icon danger'; rm.title = `Remove ${email}`; rm.setAttribute('aria-label', `Remove ${email}`); rm.textContent = '×';
+      rm.addEventListener('click', () => { rm.disabled = true; removePerson(it, p, email); });
+      act.appendChild(rm);
+    }
+    list.appendChild(li);
+  }
+}
+async function addPerson(it, email, role) {
+  email = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('Enter a full email address, like name@gmail.com.'); return; }
+  if (email === myEmail()) { toast('That’s the account you’re signed in with.'); return; }
+  if (it.id === cloud.projectFileId) { await shareProject(email, role); await renderPeople(); return; }
+  $('#sSubmit').disabled = true;
+  const j = job(`Sharing with ${email}`);
+  try {
+    const d = await readProject(it.id);
+    d.members = Array.isArray(d.members) ? d.members : [];
+    if (myEmail() && !d.members.includes(myEmail())) d.members.push(myEmail());
+    if (!d.members.includes(email)) d.members.push(email);
+    const shared = new Set(d.sharedIds || []);
+    for (const m of d.media || []) if (m.driveId) { try { await grant(m.driveId, email, 'reader', false); shared.add(m.driveId); } catch (e) {} }
+    d.sharedIds = [...shared];
+    await writeProject(it.id, d);
+    const link = location.href.split('#')[0].split('?')[0];
+    await grant(it.id, email, role, true, `I shared a Layerline video project with you. Open ${link} , sign in with this Google account, and you'll find it in your projects.`);
+    const db = await liveDb(); if (db) { try { await db.ref(`rooms/${it.id}/members/${encKey(email)}`).set(true); } catch (e) {} }
+    it.data = d; home.cache.set(it.id, { modifiedTime: null, data: d }); renderCard(it);
+    j.done(`Shared with ${email}. Google Drive will email them.`);
+    $('#sEmail').value = '';
+  } catch (e) { j.fail(`Couldn’t share the project. ${e.message}`); }
+  finally { $('#sSubmit').disabled = false; renderPeople(); }
+}
+async function removePerson(it, perm, email) {
+  const j = job(`Removing ${email}`);
+  try {
+    await gfetch(`${DRIVE_API}/files/${encodeURIComponent(it.id)}/permissions/${perm.id}?supportsAllDrives=true`, { method: 'DELETE' });
+    const open = it.id === cloud.projectFileId;
+    const d = open ? projectData() : await readProject(it.id);
+    // take back access to the project's clips too (where you're allowed to)
+    for (const m of d.media || []) {
+      if (!m.driveId) continue;
+      try { const ps = await listPerms(m.driveId); const hit = ps.find(p => (p.emailAddress || '').toLowerCase() === email && p.role !== 'owner'); if (hit) await gfetch(`${DRIVE_API}/files/${encodeURIComponent(m.driveId)}/permissions/${hit.id}?supportsAllDrives=true`, { method: 'DELETE' }); } catch (e) {}
+    }
+    if (open) { cloud.members = cloud.members.filter(e => e !== email); saveProject({ quiet: true }); }
+    else { d.members = (d.members || []).filter(e => e !== email); await writeProject(it.id, d); it.data = d; home.cache.set(it.id, { modifiedTime: null, data: d }); renderCard(it); }
+    const db = await liveDb(); if (db) { try { await db.ref(`rooms/${it.id}/members/${encKey(email)}`).remove(); } catch (e) {} }
+    j.done(`Removed ${email}. They can’t open this project or its clips anymore.`);
+  } catch (e) { j.fail(`Couldn’t remove ${email}. ${e.message}`); }
+  renderPeople();
+}
+
+// in-page confirmation (the browser's own confirm dialogs are blocked in some views)
+function confirmAction(title, body, label, fn) {
+  $('#cTitle').textContent = title; $('#cBody').textContent = body; $('#cOk').textContent = label;
+  home.confirmFn = fn; $('#confirmModal').hidden = false; $('#cCancel').focus();
+}
+$('#cOk').addEventListener('click', () => { $('#confirmModal').hidden = true; const f = home.confirmFn; home.confirmFn = null; if (f) f(); });
+$('#cCancel').addEventListener('click', () => { $('#confirmModal').hidden = true; home.confirmFn = null; });
+
+$('#homeSearch').addEventListener('input', e => { home.q = e.target.value; renderHome(); });
+document.querySelectorAll('[data-hfilter]').forEach(b => b.addEventListener('click', () => {
+  home.filter = b.dataset.hfilter;
+  document.querySelectorAll('[data-hfilter]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  renderHome();
+}));
+$('#homeNew').addEventListener('click', () => { newProject(); hideHome(); });
+$('#homeOpenDrive').addEventListener('click', () => { hideHome(); openSharedProject(); });
+$('#homeRefresh').addEventListener('click', () => { home.cache.clear(); loadHome(); });
+window.addEventListener('resize', () => { if (!homeEl.hidden) placeHome(); });
+
 /* top bar state */
 function renderCloud() {
   const signed = !!cloud.user;
@@ -2171,7 +2596,10 @@ function renderCloud() {
 $('#signInBtn').addEventListener('click', signIn);
 $('#signOutBtn').addEventListener('click', signOut);
 $('#saveBtn').addEventListener('click', saveProject);
-$('#projectsBtn').addEventListener('click', openProjects);
+$('#projectsBtn').addEventListener('click', showHome);
+$('#toEditorBtn').addEventListener('click', hideHome);
+$('#brandHome').addEventListener('click', () => { homeEl.hidden ? showHome() : hideHome(); });
+$('#brandHome').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); homeEl.hidden ? showHome() : hideHome(); } });
 $('#driveBtn').addEventListener('click', openPicker);
 $('#pClose').addEventListener('click', () => { projModal.hidden = true; });
 $('#pNew').addEventListener('click', newProject);
@@ -2249,8 +2677,10 @@ const typing = t => t && t.closest && t.closest('input,textarea,select,[contente
 document.addEventListener('keydown', e => {
   if (!modal.hidden) { if (e.key === 'Escape' && !exporting) closeModal(); return; }
   if (!projModal.hidden) { if (e.key === 'Escape') projModal.hidden = true; return; }
+  if (!$('#confirmModal').hidden) { if (e.key === 'Escape') $('#confirmModal').hidden = true; return; }
   if (!shareModal.hidden || !missModal.hidden) { if (e.key === 'Escape') { shareModal.hidden = true; missModal.hidden = true; } return; }
   if (typing(e.target)) return;
+  if (!homeEl.hidden) { if (e.key === 'Escape') homeGrid.querySelectorAll('.pmenu').forEach(m => { m.hidden = true; }); return; }
   const mod = e.metaKey || e.ctrlKey; const k = e.key.toLowerCase();
   if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
   else if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
@@ -2298,6 +2728,7 @@ renderBin(); renderTimeline(); renderInspector();
 try { new ResizeObserver(() => fitCanvas()).observe(stageView); } catch (e) { window.addEventListener('resize', fitCanvas); }
 let rt = null; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(renderTimeline, 150); });
 requestAnimationFrame(frame);
+try { if (localStorage.getItem('layerline.view') === 'home') showHome(); } catch (e) {}
 })();
 </script>
 </body>

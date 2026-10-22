@@ -197,6 +197,7 @@ kbd{font-family:var(--font-mono);font-size:10.5px;background:var(--panel-2);bord
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 [hidden]{display:none!important}
+.buf{font-size:11.5px;color:var(--accent);margin-left:6px}
 body{margin:0}
 .cstatus{color:var(--muted);font-size:12px;white-space:nowrap}
 .gbtn{background:#fff;color:#1f1f1f;border-color:#dadce0}
@@ -289,6 +290,7 @@ button.cstat:hover{color:var(--accent);border-color:var(--accent)}
         <button class="btn icon play" id="playBtn" title="Play (Space)" aria-label="Play"></button>
         <button class="btn icon" id="stepFwd" title="Forward one frame (→)" aria-label="Forward one frame"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M9 5v14l10-7z"/><rect x="4.5" y="5" width="2.5" height="14" rx="1"/></svg></button>
         <div class="tc"><b id="tcNow">00:00:00:00</b> / <span id="tcEnd">00:00:00:00</span></div>
+        <span class="buf" id="bufMsg" hidden>Buffering…</span>
       </div>
     </section>
 
@@ -550,7 +552,8 @@ function videoFramesReady(t) {
     if (c.type !== 'video' || t < c.start || t >= c.start + c.dur) continue;
     const tr = trackById(c.trackId); if (!tr || tr.off) continue;
     const el = els.get(c.id);
-    if (!el || el.readyState < 2 || el.seeking) return false;
+    if (!el || el.error) continue; // missing or broken media never blocks playback
+    if (el.readyState < 2 || el.seeking) return false;
   }
   return true;
 }
@@ -595,8 +598,16 @@ function updatePlayhead(follow) {
     if (x < left || x > left + viewW - 30) tlScroll.scrollLeft = Math.max(0, x - 40);
   }
 }
+let stalled = false, stallSince = 0, ignoreStallUntil = 0;
 function frame(ts) {
   if (state.playing) {
+    if (stalled && ts - stallSince > 8000) ignoreStallUntil = ts + 2000; // give up waiting on a stuck clip
+    const ready = ts < ignoreStallUntil || videoFramesReady(state.time);
+    if (!ready && !stalled) { stalled = true; stallSince = ts; if (exporting && rec && rec.state === 'recording') { try { rec.pause(); } catch (e) {} } }
+    else if (ready && stalled) { stalled = false; if (exporting && rec && rec.state === 'paused') { try { rec.resume(); } catch (e) {} } }
+    $('#bufMsg').hidden = !(stalled && ts - stallSince > 250);
+  } else if (stalled) { stalled = false; $('#bufMsg').hidden = true; }
+  if (state.playing && !stalled) {
     if (lastTs != null) state.time += Math.min(0.25, (ts - lastTs) / 1000);
     const end = projectEnd();
     if (state.time >= end) {
@@ -1091,6 +1102,7 @@ async function initAuth() {
     callback: r => {
       if (r.error) { settle('rej', new Error(r.error_description || 'Google sign-in failed.')); return; }
       cloud.token = r.access_token; cloud.exp = Date.now() + (Number(r.expires_in) || 3600) * 1000;
+      pushTokenToWorker();
       settle('res', cloud.token);
     },
     error_callback: e => settle('rej', new Error(e && e.type === 'popup_closed' ? 'Sign-in was closed before it finished.' : e && e.type === 'popup_failed_to_open' ? 'Your browser blocked the Google sign-in window. Allow pop-ups for this site.' : 'Google sign-in failed.'))
@@ -1193,6 +1205,49 @@ async function downloadDrive(id, size, onProgress) {
   return new Blob(parts, { type });
 }
 
+/* streaming from Drive (service worker in sw.js) */
+let streamReady = null;
+function setupStreaming() {
+  if (!('serviceWorker' in navigator) || !window.isSecureContext) return Promise.resolve(false);
+  if (!streamReady) streamReady = (async () => {
+    try {
+      await navigator.serviceWorker.register('sw.js', { scope: './' });
+      await navigator.serviceWorker.ready;
+      if (!navigator.serviceWorker.controller) {
+        await new Promise(r => { navigator.serviceWorker.addEventListener('controllerchange', r, { once: true }); setTimeout(r, 4000); });
+      }
+      pushTokenToWorker();
+      return !!navigator.serviceWorker.controller;
+    } catch (e) { return false; }
+  })();
+  return streamReady;
+}
+function pushTokenToWorker() {
+  const c = navigator.serviceWorker && navigator.serviceWorker.controller;
+  if (c && cloud.token) c.postMessage({ type: 'token', token: cloud.token });
+}
+if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', async e => {
+  if (!e.data || e.data.type !== 'need-token' || !e.ports || !e.ports[0]) return;
+  if (e.data.refresh) cloud.token = null;
+  let t = null;
+  try { t = await getToken(); } catch (err) { toast('Sign in to Google again to keep playing clips from Drive.'); }
+  e.ports[0].postMessage({ token: t });
+});
+function streamUrl(id) { return new URL('drive-stream/' + encodeURIComponent(id), location.href).href; }
+async function importStream(d, opts = {}) {
+  const url = streamUrl(d.id);
+  const el = await loadEl('video', url);
+  const m = { id: opts.id || nid('m'), name: d.name, type: 'video', url, duration: isFinite(el.duration) && el.duration > 0 ? el.duration : 10, w: el.videoWidth, h: el.videoHeight, peaks: null, thumb: null, img: null, file: null, driveId: d.id, cloud: 'saved', progress: 0, streamed: true };
+  if (!m.w || !m.h) { el.removeAttribute('src'); throw new Error('no picture'); }
+  try {
+    await new Promise(r => { el.onseeked = r; el.currentTime = Math.min(1, m.duration * 0.1); setTimeout(r, 4000); });
+    m.thumb = makeThumb(el, m.w, m.h);
+  } catch (e) {}
+  el.removeAttribute('src'); try { el.load(); } catch (e) {}
+  media.set(m.id, m); dirty = true; renderBin();
+  return m;
+}
+
 /* transfer progress panel */
 const jobsEl = $('#jobs');
 function job(label) {
@@ -1229,7 +1284,7 @@ function updateMediaProgress(m) {
   if (el) el.textContent = `Uploading ${Math.round((m.progress || 0) * 100)}%`;
 }
 function cloudChip(m) {
-  if (m.cloud === 'saved') return `<span class="cstat ok" data-cst="${m.id}">In Drive</span>`;
+  if (m.cloud === 'saved') return `<span class="cstat ok" data-cst="${m.id}">${m.streamed ? 'Streams from Drive' : 'In Drive'}</span>`;
   if (m.cloud === 'uploading') return `<span class="cstat busy" data-cst="${m.id}">Uploading ${Math.round((m.progress || 0) * 100)}%</span>`;
   if (m.cloud === 'queued') return `<span class="cstat busy" data-cst="${m.id}">Waiting to upload</span>`;
   if (m.cloud === 'error') return `<button class="cstat err" type="button" data-save="${m.id}" title="${esc(m.err || '')}">Upload failed · Retry</button>`;
@@ -1282,6 +1337,15 @@ async function addFromDrive(d) {
     const hit = EXT_KIND[ext];
     if (!hit) { toast(`${d.name} isn’t a video, audio or image file.`); return; }
     [kind, mime] = hit;
+  }
+  if (kind === 'video' && (await setupStreaming())) {
+    const js = job(`Opening ${d.name} from Drive`); js.set(0.5);
+    try {
+      const m = await importStream(d);
+      js.done(`Added ${d.name}. It streams from Drive.`);
+      placeMedia(m, null, state.time);
+      return;
+    } catch (e) { js.done(); /* fall back to a full download below */ }
   }
   const j = job(`Downloading ${d.name}`);
   try {
@@ -1380,8 +1444,11 @@ async function loadProject(fileId) {
     state.tracks = p.tracks || []; renderBin(); renderTimeline();
     const list = p.media || []; let failed = 0, i = 0;
     for (const pm of list) {
-      i++; j.label(`Downloading ${i} of ${list.length}: ${pm.name}`); j.set(0);
+      i++; j.label(`Loading ${i} of ${list.length}: ${pm.name}`); j.set(0);
       if (!pm.driveId) { failed++; continue; }
+      if (pm.type === 'video' && (await setupStreaming())) {
+        try { await importStream({ id: pm.driveId, name: pm.name }, { id: pm.id }); continue; } catch (e) { /* fall back to download */ }
+      }
       try {
         const blob = await downloadDrive(pm.driveId, 0, j.set);
         await importFile(new File([blob], pm.name, { type: fileTypeFor(pm.type, blob.type) }), { id: pm.id, driveId: pm.driveId });
@@ -1459,6 +1526,7 @@ $('#exDrive').addEventListener('click', async () => {
   } catch (e) { j.fail(`Couldn’t save the video to Drive. ${e.message}`); }
   finally { btn.disabled = false; }
 });
+if (cloudReady) setupStreaming();
 window.addEventListener('beforeunload', e => {
   if (cloud.uploads > 0 || (dirty && cloud.user)) { e.preventDefault(); e.returnValue = ''; }
 });

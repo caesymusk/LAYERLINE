@@ -3,9 +3,9 @@
 // website addresses you list in your Google Cloud project.
 window.LAYERLINE_CONFIG = {
   // OAuth client ID, looks like 1234567890-abc123.apps.googleusercontent.com
-  googleClientId: '',
+  googleClientId: '350845326138-tpr77ilt325vtqdi88blgn23qhs5n32k.apps.googleusercontent.com',
   // API key, looks like AIzaSy...
-  googleApiKey: '',
+  googleApiKey: 'AIzaSyAoaFBbyRQKvAZ9550cYX22PsLOrZbtvJA',
   // Project number from Google Cloud (Settings), digits only
-  googleAppId: ''
+  googleAppId: '350845326138'
 };

@@ -454,7 +454,7 @@ function ensureEl(c) {
   const m = media.get(c.mediaId); if (!m) return null;
   el = document.createElement(c.type === 'video' ? 'video' : 'audio');
   el.preload = 'auto'; el.playsInline = true; el.setAttribute('playsinline', '');
-  el.src = m.url; pool.appendChild(el); els.set(c.id, el); connectEl(c.id, el);
+  el.src = m.url; el._src = m.url; pool.appendChild(el); els.set(c.id, el); connectEl(c.id, el);
   return el;
 }
 function dropEl(id) {
@@ -469,7 +469,10 @@ function reconcileEls() { const ids = new Set(state.clips.map(c => c.id)); for (
 function sync(t) {
   for (const c of state.clips) {
     if (!isMediaClip(c)) continue;
-    const el = ensureEl(c); if (!el) continue;
+    let el = ensureEl(c); if (!el) continue;
+    // swap to the local copy once the background load finishes (never mid-shot while playing)
+    const mm = media.get(c.mediaId);
+    if (mm && el._src !== mm.url && !(state.playing && t >= c.start && t < c.start + c.dur)) { dropEl(c.id); el = ensureEl(c); if (!el) continue; }
     const tr = trackById(c.trackId);
     const active = t >= c.start && t < c.start + c.dur;
     if (active) {
@@ -1248,7 +1251,45 @@ async function importStream(d, opts = {}) {
   } catch (e) {}
   el.removeAttribute('src'); try { el.load(); } catch (e) {}
   media.set(m.id, m); dirty = true; renderBin();
+  queueBgLoad(m);
   return m;
+}
+// Streamed clips also load fully in the background (one at a time); then playback runs from the local copy.
+let bgChain = Promise.resolve();
+function queueBgLoad(m) { m.bg = 0; m.bgState = 'waiting'; bgChain = bgChain.then(() => bgLoad(m)); }
+async function bgLoad(m) {
+  if (!media.has(m.id) || !m.streamed) return;
+  m.bgState = 'loading'; renderBin();
+  try {
+    // Read through the streaming worker, so pieces already streamed aren't fetched from Drive twice.
+    const STEP = 8 * 1024 * 1024, url = streamUrl(m.driveId), parts = [];
+    let off = 0, total = null, type = '';
+    while (total === null || off < total) {
+      let r = null;
+      for (let tries = 0; tries < 4; tries++) {
+        try { r = await fetch(url, { headers: { Range: `bytes=${off}-${off + STEP - 1}` } }); if (r.status === 206) break; } catch (e) {}
+        r = null; await sleep(1000 * 2 ** tries);
+      }
+      if (!r) throw new Error('background load failed');
+      total = Number((r.headers.get('Content-Range') || '').split('/')[1]) || 0;
+      type = r.headers.get('Content-Type') || type;
+      const buf = new Uint8Array(await r.arrayBuffer());
+      if (!buf.length || !total) throw new Error('background load failed');
+      parts.push(buf); off += buf.length;
+      if (!media.has(m.id)) return;
+      m.bg = off / total;
+      const chip = document.querySelector(`[data-cst="${m.id}"]`);
+      if (chip) chip.textContent = `Streaming \u00b7 loading ${Math.round(m.bg * 100)}%`;
+    }
+    const blob = new Blob(parts, { type });
+    if (!media.has(m.id)) return;
+    const file = new File([blob], m.name, { type: fileTypeFor('video', blob.type) });
+    m.file = file; m.url = URL.createObjectURL(file); m.streamed = false; m.bgState = 'done';
+    computePeaks(file, m);
+    const w = navigator.serviceWorker && navigator.serviceWorker.controller;
+    if (w) w.postMessage({ type: 'forget', id: m.driveId });
+  } catch (e) { m.bgState = 'failed'; }
+  renderBin();
 }
 
 /* transfer progress panel */
@@ -1287,7 +1328,11 @@ function updateMediaProgress(m) {
   if (el) el.textContent = `Uploading ${Math.round((m.progress || 0) * 100)}%`;
 }
 function cloudChip(m) {
-  if (m.cloud === 'saved') return `<span class="cstat ok" data-cst="${m.id}">${m.streamed ? 'Streams from Drive' : 'In Drive'}</span>`;
+  if (m.cloud === 'saved' && m.streamed) {
+    const label = m.bgState === 'loading' ? `Streaming \u00b7 loading ${Math.round((m.bg || 0) * 100)}%` : m.bgState === 'waiting' ? 'Streaming \u00b7 queued' : 'Streams from Drive';
+    return `<span class="cstat busy" data-cst="${m.id}" title="Plays from Drive now; a full copy is loading for smooth editing">${label}</span>`;
+  }
+  if (m.cloud === 'saved') return `<span class="cstat ok" data-cst="${m.id}">${m.bgState === 'done' ? 'Loaded \u00b7 In Drive' : 'In Drive'}</span>`;
   if (m.cloud === 'uploading') return `<span class="cstat busy" data-cst="${m.id}">Uploading ${Math.round((m.progress || 0) * 100)}%</span>`;
   if (m.cloud === 'queued') return `<span class="cstat busy" data-cst="${m.id}">Waiting to upload</span>`;
   if (m.cloud === 'error') return `<button class="cstat err" type="button" data-save="${m.id}" title="${esc(m.err || '')}">Upload failed · Retry</button>`;

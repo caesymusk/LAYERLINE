@@ -6,7 +6,9 @@
 const DRIVE_FILES = 'https://www.googleapis.com/drive/v3/files/';
 const PREFIX = '/drive-stream/';
 const BLOCK = 1024 * 1024;
-const OPEN_ENDED_BLOCKS = 2;          // how much to send when a player asks for "everything from here"
+const OPEN_ENDED_BLOCKS = 1;          // how much to send when a player asks for "everything from here"
+const READ_AHEAD = 8;
+const MAX_RUN = 2;                    // blocks per Drive request, so a player is never stuck behind a big transfer                 // blocks to fetch ahead of what the player asked for
 const MAX_CACHE = 200 * 1024 * 1024;
 
 let token = null;
@@ -20,6 +22,9 @@ self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
 self.addEventListener('message', e => {
   if (e.data && e.data.type === 'token') token = e.data.token || null;
   if (e.data && e.data.type === 'clear-cache') { blocks.clear(); cacheBytes = 0; }
+  if (e.data && e.data.type === 'forget' && e.data.id) { // the page now has its own full copy of this file
+    for (const [k, v] of [...blocks]) if (k.startsWith(e.data.id + ':')) { blocks.delete(k); cacheBytes -= v.length; }
+  }
   if (e.data && e.data.type === 'claim') e.waitUntil(self.clients.claim()); // take over pages opened with a hard reload
 });
 
@@ -87,7 +92,7 @@ async function loadBlocks(id, first, last, size, clientId) {
     if (blocks.has(key)) { n++; continue; }
     if (inflight.has(key)) { waits.push(inflight.get(key)); n++; continue; }
     let end = n;
-    while (end + 1 <= last && !blocks.has(`${id}:${end + 1}`) && !inflight.has(`${id}:${end + 1}`)) end++;
+    while (end + 1 <= last && end + 1 - n < MAX_RUN && !blocks.has(`${id}:${end + 1}`) && !inflight.has(`${id}:${end + 1}`)) end++;
     const lo = n, hi = end; // fixed copies: n moves on before this request finishes
     const from = lo * BLOCK, to = Math.min(size - 1, (hi + 1) * BLOCK - 1);
     const run = (async () => {
@@ -134,6 +139,9 @@ async function stream(id, req, clientId) {
     const e = b === last ? end - b * BLOCK + 1 : data.length;
     out.set(data.subarray(s, e), w); w += e - s;
   }
+  // read ahead so playback doesn't wait on Drive for the next piece
+  const lastBlock = Math.floor((size - 1) / BLOCK);
+  if (last < lastBlock) loadBlocks(id, last + 1, Math.min(lastBlock, last + READ_AHEAD), size, clientId).catch(() => {});
   return new Response(out, {
     status: 206,
     headers: { 'Content-Type': type, 'Content-Length': String(out.length), 'Content-Range': `bytes ${start}-${end}/${size}`, 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-store' }

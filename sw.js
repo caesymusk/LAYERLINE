@@ -1,4 +1,4 @@
-// Layerline streaming worker (v2).
+// Layerline streaming worker (v3).
 // Videos from Google Drive play straight from Drive: the editor's video players
 // ask for "drive-stream/<file id>", and this worker fetches only the byte ranges
 // they need, using the signed-in user's access token. Fetched pieces are kept in
@@ -151,6 +151,11 @@ async function stream(id, req, clientId) {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (url.origin !== self.location.origin) return;
+  // Always check GitHub for the newest editor page, so updates show up on a normal reload.
+  if (e.request.mode === 'navigate') {
+    e.respondWith(fetch(new Request(e.request, { cache: 'no-cache' })).catch(() => fetch(e.request)));
+    return;
+  }
   const i = url.pathname.indexOf(PREFIX);
   if (i < 0) return;
   const id = decodeURIComponent(url.pathname.slice(i + PREFIX.length));

@@ -540,7 +540,9 @@ const GEN_NAMES = { gradient: 'Gradient', bars: 'Audio bars', solid: 'Solid colo
 function clipName(c) {
   if (c.type === 'text') return (String(c.props.text).split('\n')[0] || 'Text').trim() || 'Text';
   if (c.type === 'gen') return GEN_NAMES[c.props.gen] || 'Generator';
-  const m = media.get(c.mediaId); return m ? m.name : 'Missing media';
+  const m = media.get(c.mediaId); if (m) return m.name;
+  const pm = cloud.pending && cloud.pending.get(c.mediaId);
+  return pm ? `${pm.name} \u00b7 loading` : 'Missing media';
 }
 function overlaps(c) {
   return state.clips.some(o => o.id !== c.id && o.trackId === c.trackId && o.start < c.start + c.dur - 1e-6 && c.start < o.start + o.dur - 1e-6);
@@ -1703,7 +1705,8 @@ function projectData() {
     app: 'layerline', version: 1,
     name: $('#projName').value.trim() || 'Untitled project',
     aspect: state.aspect, tracks: state.tracks, clips: state.clips,
-    media: [...media.values()].map(m => ({ id: m.id, name: m.name, type: m.type, driveId: m.driveId || null })),
+    media: [...media.values()].map(m => ({ id: m.id, name: m.name, type: m.type, driveId: m.driveId || null }))
+      .concat([...(cloud.pending ? cloud.pending.values() : []), ...cloud.missing].filter(pm => !media.has(pm.id)).map(pm => ({ id: pm.id, name: pm.name, type: pm.type, driveId: pm.driveId || null }))),
     members: cloud.members, sharedIds: [...cloud.sharedIds],
     thumb: stageThumb()
   };
@@ -1774,7 +1777,7 @@ function clearProject() {
   for (const id of [...els.keys()]) dropEl(id);
   for (const m of media.values()) if (m.url && m.url.startsWith('blob:')) URL.revokeObjectURL(m.url);
   media.clear(); state.clips = []; state.selected = null;
-  cloud.members = []; cloud.sharedIds = new Set(); cloud.missing = [];
+  cloud.members = []; cloud.sharedIds = new Set(); cloud.missing = []; cloud.pending = new Map();
   undoStack.length = 0; redoStack.length = 0; updateUndo();
 }
 function bumpIds() {
@@ -1794,20 +1797,32 @@ async function loadProject(fileId) {
     clearProject();
     cloud.members = Array.isArray(p.members) ? p.members.map(x => String(x).toLowerCase()) : [];
     cloud.sharedIds = new Set(Array.isArray(p.sharedIds) ? p.sharedIds : []);
-    state.tracks = p.tracks || []; renderBin(); renderTimeline();
-    const list = p.media || []; let failed = 0, i = 0; const missing = [];
-    for (const pm of list) {
-      i++; j.label(`Loading ${i} of ${list.length}: ${pm.name}`); j.set(0);
-      if (!pm.driveId) { failed++; continue; }
-      try { await loadDriveMedia(pm, j.set); } catch (e) { missing.push(pm); }
-    }
-    cloud.missing = missing;
-    state.clips = p.clips || [];
-    bumpIds();
+    // show the whole timeline right away; clips fill in as their media arrives
+    state.tracks = p.tracks || []; state.clips = p.clips || [];
     setAspect(ASPECTS[p.aspect] ? p.aspect : '16:9');
     $('#projName').value = p.name || 'Untitled project';
     cloud.projectFileId = fileId; dirty = false;
+    // load in timeline order: media used earliest first, unused media last
+    const firstUse = new Map();
+    for (const c of state.clips) if (c.mediaId) firstUse.set(c.mediaId, Math.min(firstUse.has(c.mediaId) ? firstUse.get(c.mediaId) : Infinity, c.start));
+    const list = (p.media || []).map((pm, k) => ({ pm, k })).sort((a, b) => {
+      const ua = firstUse.has(a.pm.id) ? firstUse.get(a.pm.id) : Infinity, ub = firstUse.has(b.pm.id) ? firstUse.get(b.pm.id) : Infinity;
+      return ua - ub || a.k - b.k;
+    }).map(x => x.pm);
+    cloud.pending = new Map(list.map(pm => [pm.id, pm]));
+    bumpIds(); [...cloud.pending.keys()].forEach(id => { const mm = /(\d+)$/.exec(id); if (mm) uid = Math.max(uid, Number(mm[1]) + 1); });
     renderBin(); renderTimeline(); renderInspector(); seek(0); tlScroll.scrollLeft = 0;
+    let failed = 0, i = 0; const missing = [];
+    for (const pm of list) {
+      i++; j.label(`Loading ${i} of ${list.length}: ${pm.name}`); j.set(0);
+      if (!pm.driveId) { failed++; cloud.pending.delete(pm.id); continue; }
+      try { await loadDriveMedia(pm, j.set); } catch (e) { missing.push(pm); }
+      cloud.pending.delete(pm.id);
+      if (cloud.projectFileId !== fileId) { j.done(); return; } // another project was opened meanwhile
+      renderTimeline();
+    }
+    cloud.missing = missing;
+    renderBin(); renderTimeline(); renderInspector();
     j.done(missing.length ? '' : failed ? `Opened “${p.name}”, but ${failed} media file${failed > 1 ? 's' : ''} weren’t saved with it.` : `Opened “${p.name}”`);
     if (missing.length) showMissing();
     liveJoin();

@@ -197,6 +197,9 @@ kbd{font-family:var(--font-mono);font-size:10.5px;background:var(--panel-2);bord
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 [hidden]{display:none!important}
+.ph-wait{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.spin{width:16px;height:16px;border-radius:50%;border:2px solid var(--line-strong);border-top-color:var(--accent);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 body.at-home .ed-only{display:none!important}
 body:not(.at-home) .home-only{display:none!important}
 .brand{cursor:pointer;border-radius:6px}
@@ -352,6 +355,10 @@ button.cstat:hover{color:var(--accent);border-color:var(--accent)}
           <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.2 3h7.6l6.2 10.8-3.8 6.6H5.8L2 13.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.2 3l5.9 10.8H22M15.8 3L9.7 13.8 5.8 20.4M2 13.8h12.1" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" opacity=".6"/></svg>
           Add from Google Drive
         </button>
+        <button class="btn drive-btn" id="photosBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a4.5 4.5 0 0 1 0 9z" fill="#ea4335"/><path d="M21 12a4.5 4.5 0 0 1-9 0z" fill="#4285f4"/><path d="M12 21a4.5 4.5 0 0 1 0-9z" fill="#34a853"/><path d="M3 12a4.5 4.5 0 0 1 9 0z" fill="#fbbc05"/></svg>
+          Add from Google Photos
+        </button>
         <label class="backup" for="backupChk"><input type="checkbox" id="backupChk" checked> Back up imported files to Google Drive</label>
         <ul class="mlist" id="mediaList"></ul>
         <p class="hint" id="binHint">The project below is an example built from text and generators. Import clips or add them from Drive, then drag them onto any track.</p>
@@ -461,6 +468,14 @@ button.cstat:hover{color:var(--accent);border-color:var(--accent)}
     </form>
     <ul class="dlist" id="sList"></ul>
     <div class="row-btns"><button class="btn" id="sClose">Done</button></div>
+  </div>
+</div>
+<div class="modal" id="photosModal" hidden role="dialog" aria-modal="true" aria-labelledby="phTitle">
+  <div class="sheet">
+    <h3 id="phTitle">Google Photos</h3>
+    <p class="muted" id="phText"></p>
+    <div class="ph-wait" id="phWait" hidden><span class="spin" aria-hidden="true"></span><span>Waiting for Google Photos</span><button class="btn" type="button" id="phReopen">Open the window again</button></div>
+    <div class="row-btns"><button class="btn" id="phCancel">Cancel</button><button class="btn primary" id="phOpen">Open Google Photos</button></div>
   </div>
 </div>
 <div class="modal" id="confirmModal" hidden role="dialog" aria-modal="true" aria-labelledby="cTitle">
@@ -1346,7 +1361,7 @@ const TEAM_MODE = CFG.teamMode === true;
 const SCOPE = (TEAM_MODE ? 'https://www.googleapis.com/auth/drive' : 'https://www.googleapis.com/auth/drive.file') + (CFG.firebase ? ' openid email profile' : ''); // email lets live editing know who you are
 const DRIVE_API = 'https://www.googleapis.com/drive/v3', UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 const CHUNK = 8 * 1024 * 1024; // must be a multiple of 256 KiB
-const cloud = { token: null, exp: 0, user: null, folderId: null, tokenClient: null, waiters: [], projectFileId: null, uploads: 0, backup: true };
+const cloud = { extraScopes: new Set(), granted: '', token: null, exp: 0, user: null, folderId: null, tokenClient: null, waiters: [], projectFileId: null, uploads: 0, backup: true };
 try { const b = localStorage.getItem('layerline.backup'); if (b !== null) cloud.backup = b === '1'; } catch (e) {}
 let dirty = false;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -1374,20 +1389,23 @@ async function initAuth() {
     client_id: CFG.googleClientId, scope: SCOPE,
     callback: r => {
       if (r.error) { settle('rej', new Error(r.error_description || 'Google sign-in failed.')); return; }
-      cloud.token = r.access_token; cloud.exp = Date.now() + (Number(r.expires_in) || 3600) * 1000;
+      cloud.token = r.access_token; cloud.exp = Date.now() + (Number(r.expires_in) || 3600) * 1000; cloud.granted = r.scope || SCOPE;
       pushTokenToWorker();
       settle('res', cloud.token);
     },
     error_callback: e => settle('rej', new Error(e && e.type === 'popup_closed' ? 'Sign-in was closed before it finished.' : e && e.type === 'popup_failed_to_open' ? 'Your browser blocked the Google sign-in window. Allow pop-ups for this site.' : 'Google sign-in failed.'))
   });
 }
-async function getToken() {
-  if (cloud.token && Date.now() < cloud.exp - 60000) return cloud.token;
+// need: an extra permission (like Google Photos) asked for only when a feature first uses it
+async function getToken(need) {
+  const has = () => !need || (cloud.granted || '').split(' ').includes(need);
+  if (cloud.token && Date.now() < cloud.exp - 60000 && has()) return cloud.token;
   if (!cloudReady) throw new Error('Google Drive isn’t set up for this copy of Layerline yet. See SETUP.md.');
+  if (need) cloud.extraScopes.add(need);
   await initAuth();
   return new Promise((res, rej) => {
     cloud.waiters.push({ res, rej });
-    if (cloud.waiters.length === 1) cloud.tokenClient.requestAccessToken({ prompt: '' });
+    if (cloud.waiters.length === 1) cloud.tokenClient.requestAccessToken({ prompt: '', scope: [SCOPE, ...cloud.extraScopes].join(' ') });
   });
 }
 async function gfetch(url, opts = {}, retry = true) {
@@ -2571,6 +2589,127 @@ $('#homeOpenDrive').addEventListener('click', () => { hideHome(); openSharedProj
 $('#homeRefresh').addEventListener('click', () => { home.cache.clear(); loadHome(); });
 window.addEventListener('resize', () => { if (!homeEl.hidden) placeHome(); });
 
+/* ---------- Google Photos (Photos Picker API) ---------- */
+// Pick in Google's own Photos window, then copy what was picked into the project:
+// videos come transcoded to MP4 (=dv), photos as JPEG up to 4K (so iPhone HEIC works).
+// Each item is also saved to the Layerline folder in Drive: Photos links expire after an hour,
+// and collaborators need a lasting copy.
+const PHOTOS_SCOPE = 'https://www.googleapis.com/auth/photospicker.mediaitems.readonly';
+const PHOTOS_API = 'https://photospicker.googleapis.com/v1';
+const photosModal = $('#photosModal');
+const ph = { session: null, polling: false, win: null, cancelled: false };
+const secs = v => { const n = parseFloat(String(v || '').replace('s', '')); return isFinite(n) && n > 0 ? n : 0; };
+function photosState(kind, text) {
+  $('#phText').textContent = text;
+  $('#phOpen').hidden = kind !== 'ready';
+  $('#phWait').hidden = kind !== 'waiting';
+}
+async function addFromPhotos() {
+  if (!(await ensureSignedIn())) return;
+  let token;
+  try { token = await getToken(PHOTOS_SCOPE); } catch (e) { toast(e.message); return; }
+  if (!(cloud.granted || '').split(' ').includes(PHOTOS_SCOPE)) { toast('Layerline needs permission to see the photos and videos you pick. Try again and allow it.'); return; }
+  photosModal.hidden = false; ph.cancelled = false;
+  photosState('busy', 'Connecting to Google Photos…');
+  try {
+    const r = await gfetch(`${PHOTOS_API}/sessions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pickingConfig: { maxItemCount: '50' } }) });
+    ph.session = await r.json();
+    photosState('ready', 'Choose photos and videos in the Google Photos window, then click Done there. They’re copied into the Layerline folder of your Drive so your team can use them too.');
+    $('#phOpen').focus();
+  } catch (e) {
+    photosModal.hidden = true;
+    toast(e.status === 403 ? 'Google Photos isn’t turned on for Layerline yet. Enable the Photos Picker API in Google Cloud (see SETUP.md).' : `Couldn’t connect to Google Photos. ${e.message}`);
+  }
+}
+function openPhotosWindow() {
+  if (!ph.session) return;
+  const url = ph.session.pickerUri + (/\/autoclose$/.test(ph.session.pickerUri) ? '' : '/autoclose');
+  ph.win = window.open(url, 'layerlinePhotos', 'popup,width=1040,height=780');
+  if (!ph.win) { toast('Your browser blocked the Google Photos window. Allow pop-ups for this site and click again.'); return; }
+  photosState('waiting', 'Waiting for you to finish in Google Photos… Pick your photos and videos there, then click Done.');
+  pollPhotos();
+}
+async function pollPhotos() {
+  if (ph.polling) return;
+  ph.polling = true;
+  const s0 = ph.session, started = Date.now();
+  let wait = secs(s0.pollingConfig && s0.pollingConfig.pollInterval) || 3;
+  const limit = (secs(s0.pollingConfig && s0.pollingConfig.timeoutIn) || 1800) * 1000;
+  try {
+    for (;;) {
+      await sleep(wait * 1000);
+      if (ph.cancelled || ph.session !== s0) return;
+      const r = await gfetch(`${PHOTOS_API}/sessions/${encodeURIComponent(s0.id)}`);
+      const s = await r.json();
+      if (s.mediaItemsSet) { photosModal.hidden = true; await importPicked(s0.id); return; }
+      if (Date.now() - started > limit) { photosModal.hidden = true; toast('The Google Photos window timed out. Click Add from Google Photos to try again.'); return; }
+      wait = secs(s.pollingConfig && s.pollingConfig.pollInterval) || wait;
+    }
+  } catch (e) { photosModal.hidden = true; toast(`Lost touch with Google Photos. ${e.message}`); }
+  finally { ph.polling = false; }
+}
+async function importPicked(sessionId) {
+  const items = [];
+  try {
+    let page = '';
+    do {
+      const r = await gfetch(`${PHOTOS_API}/mediaItems?sessionId=${encodeURIComponent(sessionId)}&pageSize=100${page ? '&pageToken=' + encodeURIComponent(page) : ''}`);
+      const j = await r.json();
+      items.push(...(j.mediaItems || []));
+      page = j.nextPageToken || '';
+    } while (page);
+  } catch (e) { toast(`Couldn’t get your picks from Google Photos. ${e.message}`); return; }
+  if (!items.length) { toast('Nothing was picked in Google Photos.'); endPhotosSession(sessionId); return; }
+  let at = state.time, added = 0, blocked = false;
+  for (const it of items) {
+    const mf = it.mediaFile || {}, isVideo = it.type === 'VIDEO' || /^video\//.test(mf.mimeType || '');
+    const base = (mf.baseUrl || '').replace(/=.*$/, '');
+    let name = mf.filename || (isVideo ? 'Google Photos video.mp4' : 'Google Photos photo.jpg');
+    if (!base) continue;
+    const vm = (mf.mediaFileMetadata && mf.mediaFileMetadata.videoMetadata) || {};
+    if (isVideo && vm.processingStatus && vm.processingStatus !== 'READY') { toast(`${name} is still processing in Google Photos. Try it again in a few minutes.`); continue; }
+    // browser-friendly versions: MP4 video, JPEG photo
+    name = name.replace(/\.(mov|heic|heif|hevc|m4v|3gp|avi|mkv)$/i, isVideo ? '.mp4' : '.jpg');
+    if (!isVideo && !/\.(jpe?g|png|webp|gif)$/i.test(name)) name += '.jpg';
+    const url = base + (isVideo ? '=dv' : '=w3840-h3840');
+    const j = job(`Copying ${name} from Google Photos`);
+    try {
+      const t = await getToken(PHOTOS_SCOPE);
+      let r;
+      try { r = await fetch(url, { headers: { Authorization: 'Bearer ' + t } }); }
+      catch (e) { blocked = true; throw new Error('the browser blocked the download'); }
+      if (!r.ok) throw new Error(`Google Photos answered ${r.status}`);
+      const total = Number(r.headers.get('Content-Length')) || 0;
+      let blob;
+      if (r.body && r.body.getReader) {
+        const reader = r.body.getReader(), parts = []; let got = 0;
+        for (;;) { const { done, value } = await reader.read(); if (done) break; parts.push(value); got += value.length; if (total) j.set(Math.min(1, got / total)); }
+        blob = new Blob(parts);
+      } else blob = await r.blob();
+      const type = isVideo ? 'video/mp4' : ((r.headers.get('Content-Type') || '').split(';')[0] || 'image/jpeg');
+      const m = await importFile(new File([blob], name, { type }));
+      if (m) {
+        if (cloud.user && !m.driveId) queueBackup(m); // lasting copy in Drive, even if backups are off
+        const c = placeMedia(m, null, at); if (c) at = c.start + c.dur;
+        added++;
+      }
+      j.done();
+    } catch (e) { j.fail(`Couldn’t copy ${name}. ${e.message}`); if (blocked) break; }
+  }
+  endPhotosSession(sessionId);
+  if (blocked) toast('Your browser blocked downloads from Google Photos for this site. Tell Claude: it needs a small relay to work around it.');
+  else if (added) toast(`Added ${added} item${added > 1 ? 's' : ''} from Google Photos. Copies are saving to your Drive.`);
+}
+function endPhotosSession(id) { gfetch(`${PHOTOS_API}/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {}); if (ph.session && ph.session.id === id) ph.session = null; }
+$('#photosBtn').addEventListener('click', addFromPhotos);
+$('#phOpen').addEventListener('click', openPhotosWindow);
+$('#phCancel').addEventListener('click', () => {
+  ph.cancelled = true; photosModal.hidden = true;
+  if (ph.win && !ph.win.closed) { try { ph.win.close(); } catch (e) {} }
+  if (ph.session) endPhotosSession(ph.session.id);
+});
+
+$('#phReopen').addEventListener('click', () => { if (ph.win && !ph.win.closed) ph.win.focus(); else openPhotosWindow(); });
 /* top bar state */
 function renderCloud() {
   const signed = !!cloud.user;
@@ -2677,6 +2816,7 @@ const typing = t => t && t.closest && t.closest('input,textarea,select,[contente
 document.addEventListener('keydown', e => {
   if (!modal.hidden) { if (e.key === 'Escape' && !exporting) closeModal(); return; }
   if (!projModal.hidden) { if (e.key === 'Escape') projModal.hidden = true; return; }
+  if (!photosModal.hidden) { if (e.key === 'Escape') $('#phCancel').click(); return; }
   if (!$('#confirmModal').hidden) { if (e.key === 'Escape') $('#confirmModal').hidden = true; return; }
   if (!shareModal.hidden || !missModal.hidden) { if (e.key === 'Escape') { shareModal.hidden = true; missModal.hidden = true; } return; }
   if (typing(e.target)) return;

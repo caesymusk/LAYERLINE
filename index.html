@@ -342,7 +342,7 @@ button.cstat:hover{color:var(--accent);border-color:var(--accent)}
 <div class="jobs" id="jobs" hidden aria-live="polite"></div>
 <div class="toast" id="toast" hidden role="status"></div>
 
-<script src="config.js"></script>
+<script>document.write('<script src="config.js?v=' + Date.now() + '"><\/script>');</script>
 <script>
 (() => {
 'use strict';
@@ -1225,11 +1225,15 @@ async function openPicker() {
   try { await loadPicker(); } catch (e) { toast(e.message); return; }
   let token; try { token = await getToken(); } catch (e) { toast(e.message); return; }
   const P = google.picker;
-  const vids = new P.DocsView(P.ViewId.DOCS_VIDEOS).setIncludeFolders(true);
-  const auds = new P.DocsView(P.ViewId.DOCS).setMimeTypes(PICK_AUDIO).setIncludeFolders(true);
-  const imgs = new P.DocsView(P.ViewId.DOCS_IMAGES).setIncludeFolders(true);
+  const label = (v, t) => (typeof v.setLabel === 'function' ? v.setLabel(t) : v);
+  // "All files" browses real folders with no type filter, so videos Drive mislabels still show up.
+  const all = label(new P.DocsView(P.ViewId.DOCS).setIncludeFolders(true).setParent('root'), 'All files');
+  const vids = label(new P.DocsView(P.ViewId.DOCS_VIDEOS).setIncludeFolders(true), 'Videos');
+  const auds = label(new P.DocsView(P.ViewId.DOCS).setMimeTypes(PICK_AUDIO).setIncludeFolders(true), 'Audio');
+  const imgs = label(new P.DocsView(P.ViewId.DOCS_IMAGES).setIncludeFolders(true), 'Images');
+  const shared = label(new P.DocsView(P.ViewId.DOCS).setIncludeFolders(true).setOwnedByMe(false), 'Shared with me');
   const b = new P.PickerBuilder()
-    .addView(vids).addView(auds).addView(imgs)
+    .addView(all).addView(vids).addView(auds).addView(imgs).addView(shared)
     .enableFeature(P.Feature.MULTISELECT_ENABLED)
     .setOAuthToken(token).setDeveloperKey(CFG.googleApiKey)
     .setTitle('Add from Google Drive')
@@ -1247,13 +1251,24 @@ function fileTypeFor(kind, got) {
   if (got && got.startsWith(kind + '/')) return got === 'video/quicktime' ? 'video/mp4' : got;
   return { video: 'video/mp4', audio: 'audio/mpeg', image: 'image/jpeg' }[kind] || got || '';
 }
+const EXT_KIND = {
+  mov: ['video', 'video/mp4'], mp4: ['video', 'video/mp4'], m4v: ['video', 'video/mp4'], webm: ['video', 'video/webm'], mkv: ['video', 'video/webm'], ogv: ['video', 'video/ogg'], '3gp': ['video', 'video/mp4'], avi: ['video', 'video/x-msvideo'],
+  mp3: ['audio', 'audio/mpeg'], wav: ['audio', 'audio/wav'], m4a: ['audio', 'audio/mp4'], aac: ['audio', 'audio/aac'], flac: ['audio', 'audio/flac'], ogg: ['audio', 'audio/ogg'], opus: ['audio', 'audio/ogg'], aif: ['audio', 'audio/aiff'], aiff: ['audio', 'audio/aiff'],
+  jpg: ['image', 'image/jpeg'], jpeg: ['image', 'image/jpeg'], png: ['image', 'image/png'], gif: ['image', 'image/gif'], webp: ['image', 'image/webp'], avif: ['image', 'image/avif'], bmp: ['image', 'image/bmp']
+};
 async function addFromDrive(d) {
-  const kind = (d.mimeType || '').split('/')[0];
-  if (!['video', 'audio', 'image'].includes(kind)) { toast(`${d.name} isn’t a video, audio or image file.`); return; }
+  let kind = (d.mimeType || '').split('/')[0], mime = d.mimeType;
+  if (!['video', 'audio', 'image'].includes(kind)) {
+    const ext = ((d.name || '').split('.').pop() || '').toLowerCase();
+    if (ext === 'heic' || ext === 'heif') { toast(`${d.name} is an iPhone HEIC photo, which browsers can’t open. Save it as JPG first.`); return; }
+    const hit = EXT_KIND[ext];
+    if (!hit) { toast(`${d.name} isn’t a video, audio or image file.`); return; }
+    [kind, mime] = hit;
+  }
   const j = job(`Downloading ${d.name}`);
   try {
     const blob = await downloadDrive(d.id, d.size, j.set);
-    const file = new File([blob], d.name, { type: fileTypeFor(kind, d.mimeType) });
+    const file = new File([blob], d.name, { type: fileTypeFor(kind, mime) });
     const m = await importFile(file, { driveId: d.id });
     j.done(m ? `Added ${d.name}` : '');
     if (m) placeMedia(m, null, state.time);

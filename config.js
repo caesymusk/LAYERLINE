@@ -5,6 +5,9 @@ window.LAYERLINE_CONFIG = {
   googleClientId: '350845326138-tpr77ilt325vtqdi88blgn23qhs5n32k.apps.googleusercontent.com',
   googleApiKey: 'AIzaSyAoaFBbyRQKvAZ9550cYX22PsLOrZbtvJA',
   googleAppId: '350845326138',
+  // Team mode: full Drive access so clips shared with you open without picking them.
+  // Fine while Layerline is in testing for your team; set to false before opening it to the public.
+  teamMode: true,
   // Live collaboration (Firebase Realtime Database)
   firebase: {
     apiKey: 'AIzaSyDbYjOvh40PQCuz_7Yvpk5Gq-Ik5i-6LbY',

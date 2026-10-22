@@ -197,6 +197,28 @@ kbd{font-family:var(--font-mono);font-size:10.5px;background:var(--panel-2);bord
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 [hidden]{display:none!important}
+/* tools + smart cursors */
+.clip .h{cursor:inherit}
+.clip[data-zone="trim-l"]{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M15%204H12V20H15%22%20stroke%3D%22%23111%22%20stroke-width%3D%224%22/%3E%3Cpath%20d%3D%22M15%204H12V20H15%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.8%22/%3E%3Cpath%20d%3D%22M3%2012H9M5.5%209.5L3%2012l2.5%202.5%22%20stroke%3D%22%23111%22%20stroke-width%3D%224%22/%3E%3Cpath%20d%3D%22M3%2012H9M5.5%209.5L3%2012l2.5%202.5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.8%22/%3E%3C/svg%3E") 12 12, w-resize}
+.clip[data-zone="trim-r"]{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9%204H12V20H9%22%20stroke%3D%22%23111%22%20stroke-width%3D%224%22/%3E%3Cpath%20d%3D%22M9%204H12V20H9%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.8%22/%3E%3Cpath%20d%3D%22M21%2012H15M18.5%209.5L21%2012l-2.5%202.5%22%20stroke%3D%22%23111%22%20stroke-width%3D%224%22/%3E%3Cpath%20d%3D%22M21%2012H15M18.5%209.5L21%2012l-2.5%202.5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.8%22/%3E%3C/svg%3E") 12 12, e-resize}
+.clip[data-zone="fade-in"],.clip[data-zone="fade-out"]{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%2019L20%205V19Z%22%20stroke%3D%22%23111%22%20stroke-width%3D%224%22/%3E%3Cpath%20d%3D%22M4%2019L20%205V19Z%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.8%22/%3E%3C/svg%3E") 12 12, nwse-resize}
+.tl-inner.tool-blade .clip,.tl-inner.tool-blade .clip *{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%202V22%22%20stroke%3D%22%23111%22%20stroke-width%3D%224%22/%3E%3Cpath%20d%3D%22M12%202V22%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.8%22/%3E%3Cpath%20d%3D%22M12%203l7%203.5-7%203.5z%22%20fill%3D%22%23fff%22%20stroke%3D%22%23111%22%20stroke-width%3D%221.3%22/%3E%3C/svg%3E") 12 12, crosshair}
+html[data-dragcursor="grabbing"] *{cursor:grabbing!important}
+html[data-dragcursor="trim-l"] *{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M15%204H12V20H15%22%20stroke%3D%22%23111%22%20stroke-width%3D%224%22/%3E%3Cpath%20d%3D%22M15%204H12V20H15%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.8%22/%3E%3Cpath%20d%3D%22M3%2012H9M5.5%209.5L3%2012l2.5%202.5%22%20stroke%3D%22%23111%22%20stroke-width%3D%224%22/%3E%3Cpath%20d%3D%22M3%2012H9M5.5%209.5L3%2012l2.5%202.5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.8%22/%3E%3C/svg%3E") 12 12, w-resize!important}
+html[data-dragcursor="trim-r"] *{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9%204H12V20H9%22%20stroke%3D%22%23111%22%20stroke-width%3D%224%22/%3E%3Cpath%20d%3D%22M9%204H12V20H9%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.8%22/%3E%3Cpath%20d%3D%22M21%2012H15M18.5%209.5L21%2012l-2.5%202.5%22%20stroke%3D%22%23111%22%20stroke-width%3D%224%22/%3E%3Cpath%20d%3D%22M21%2012H15M18.5%209.5L21%2012l-2.5%202.5%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.8%22/%3E%3C/svg%3E") 12 12, e-resize!important}
+html[data-dragcursor="fade"] *{cursor:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%2019L20%205V19Z%22%20stroke%3D%22%23111%22%20stroke-width%3D%224%22/%3E%3Cpath%20d%3D%22M4%2019L20%205V19Z%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.8%22/%3E%3C/svg%3E") 12 12, nwse-resize!important}
+.clip .fade{position:absolute;top:0;bottom:0;pointer-events:none;z-index:1;background:rgba(0,0,0,.42)}
+.clip .fade.fi{left:0;clip-path:polygon(0 0,100% 0,0 100%)}
+.clip .fade.fo{right:0;clip-path:polygon(0 0,100% 0,100% 100%)}
+.clip .fh{position:absolute;top:2px;width:7px;height:7px;margin-left:-3.5px;border-radius:2px;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.55);z-index:3;opacity:0;pointer-events:none;transition:opacity .12s}
+.clip:hover .fh,.clip.sel .fh{opacity:.95}
+.clip.limit{box-shadow:inset 0 0 0 2px var(--danger),0 0 0 1px var(--danger)}
+.blade-guide{position:absolute;width:0;border-left:2px solid var(--danger);z-index:4;pointer-events:none;margin-left:-1px}
+.blade-guide::before{content:"";position:absolute;top:-1px;left:-5px;border:4px solid transparent;border-top:6px solid var(--danger)}
+.seg{display:inline-flex;gap:2px;padding:2px;border:1px solid var(--line);border-radius:7px;background:var(--panel-2)}
+.seg .btn{border-color:transparent;height:28px;background:transparent}
+.seg .btn[aria-pressed="true"]{background:var(--panel-3);border-color:var(--accent);color:var(--accent)}
+
 #peerLayer{position:fixed;inset:0;pointer-events:none;z-index:65;overflow:hidden}
 .pc{position:absolute;left:0;top:0;will-change:transform;transition:transform .09s linear,opacity .15s}
 .pc svg{display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}
@@ -316,6 +338,11 @@ button.cstat:hover{color:var(--accent);border-color:var(--accent)}
 
   <section class="panel timeline" aria-label="Timeline">
     <div class="tl-bar">
+      <div class="seg" role="group" aria-label="Editing tool">
+        <button class="btn icon" id="toolSel" aria-pressed="true" title="Select tool (A): move clips, drag edges to trim, drag top corners for fades"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 3l13 8-6 1.5L9 19z"/></svg></button>
+        <button class="btn icon" id="toolBlade" aria-pressed="false" title="Blade tool (B): click a clip to cut it. Shift-click cuts every track."><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20"/><path d="M12 3l7 3.5-7 3.5z" fill="currentColor"/></svg></button>
+      </div>
+      <span class="sep"></span>
       <button class="btn" id="splitBtn" title="Split at playhead (S)">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></svg>Split</button>
       <button class="btn" id="dupBtn" title="Duplicate (Ctrl+D)">Duplicate</button>
@@ -397,7 +424,7 @@ function fmtRuler(t) { const m = Math.floor(t / 60); const s = t - m * 60; const
 const canvas = $('#stage'), ctx = canvas.getContext('2d');
 const stageView = $('#stageView'), tlScroll = $('#tlScroll'), inner = $('#tlInner'), pool = $('#mediaPool');
 let W = 1280, H = 720;
-const state = { aspect: '16:9', tracks: [], clips: [], selected: null, pps: 70, time: 0, playing: false, snap: true };
+const state = { tool: 'select', aspect: '16:9', tracks: [], clips: [], selected: null, pps: 70, time: 0, playing: false, snap: true };
 const media = new Map(), els = new Map(), nodes = new Map();
 let uid = 1; const nid = p => `${p}${uid++}`;
 let audioCtx = null, master = null, analyser = null, freq = null;
@@ -769,6 +796,94 @@ function addGenerated(kind) {
   const c = { id: nid('c'), trackId: tr.id, type: isText ? 'text' : 'gen', start: findFreeStart(tr.id, state.time, dur), dur, in: 0, props: defaultProps(isText ? 'text' : 'gen', kind) };
   state.clips.push(c); renderTimeline(); select(c.id);
 }
+// cut one clip at time t; returns the new right-hand piece (no history entry)
+function splitClipAt(c, t) {
+  t = Math.round(t * FPS) / FPS;
+  if (!(t > c.start + 1 / FPS && t < c.start + c.dur - 1 / FPS)) return null;
+  const leftDur = t - c.start;
+  const right = JSON.parse(JSON.stringify(c));
+  right.id = nid('c'); right.start = t; right.dur = c.dur - leftDur; right.in = c.in + leftDur; right.props.fadeIn = 0;
+  c.dur = leftDur; c.props.fadeOut = 0;
+  state.clips.push(right);
+  return right;
+}
+function bladeTime(e) {
+  let t = timeFromX(e.clientX);
+  const s = snapVal(t, snapPoints(null)); if (s.hit) t = s.v;
+  return Math.round(t * FPS) / FPS;
+}
+function bladeAt(e, clipEl) {
+  const c = clipById(clipEl.dataset.id); if (!c) return;
+  const t = bladeTime(e);
+  const targets = e.shiftKey ? state.clips.filter(k => t > k.start + 1 / FPS && t < k.start + k.dur - 1 / FPS) : [c];
+  const snap0 = snapshot(); let mine = null, n = 0;
+  for (const k of targets) { const r = splitClipAt(k, t); if (r) { n++; if (k === c) mine = r; } }
+  if (!n) { toast('Too close to the edge of the clip to cut there.'); return; }
+  pushHistory(snap0); renderTimeline(); select(mine ? mine.id : null);
+  if (e.shiftKey) toast(`Cut ${n} clip${n > 1 ? 's' : ''} at ${tc(t)}`);
+}
+let hoverClip = null;
+const bladeGuide = document.createElement('div'); bladeGuide.className = 'blade-guide'; bladeGuide.hidden = true;
+function showBladeGuide(e, clipEl) {
+  if (!clipEl) { bladeGuide.hidden = true; return; }
+  if (bladeGuide.parentNode !== inner) inner.appendChild(bladeGuide);
+  const t = bladeTime(e);
+  const row = clipEl.closest('.row'), ruler = inner.querySelector('.ruler');
+  const top = e.shiftKey ? ruler.offsetHeight : row.offsetTop, h = e.shiftKey ? inner.scrollHeight - ruler.offsetHeight : row.offsetHeight;
+  bladeGuide.style.left = `${HEAD_W + t * state.pps}px`; bladeGuide.style.top = `${top}px`; bladeGuide.style.height = `${h}px`;
+  bladeGuide.hidden = false;
+}
+function setTool(t) {
+  state.tool = t;
+  $('#toolSel').setAttribute('aria-pressed', String(t === 'select'));
+  $('#toolBlade').setAttribute('aria-pressed', String(t === 'blade'));
+  inner.classList.toggle('tool-blade', t === 'blade');
+  bladeGuide.hidden = true;
+  if (hoverClip) { delete hoverClip.dataset.zone; hoverClip = null; }
+}
+inner.addEventListener('pointermove', e => {
+  if (document.documentElement.dataset.dragcursor) return;
+  const clipEl = e.target.closest && e.target.closest('.clip');
+  if (state.tool === 'blade') { showBladeGuide(e, clipEl); return; }
+  if (hoverClip && hoverClip !== clipEl) { delete hoverClip.dataset.zone; hoverClip = null; }
+  if (clipEl) { const z = clipZone(e, clipEl); if (clipEl.dataset.zone !== z) clipEl.dataset.zone = z; hoverClip = clipEl; }
+});
+inner.addEventListener('pointerleave', () => { bladeGuide.hidden = true; if (hoverClip) { delete hoverClip.dataset.zone; hoverClip = null; } });
+function targetClip() {
+  const c = clipById(state.selected);
+  if (c) return c;
+  const order = state.tracks.map(t => t.id);
+  return state.clips.filter(k => state.time >= k.start && state.time < k.start + k.dur).sort((a, b) => order.indexOf(a.trackId) - order.indexOf(b.trackId))[0] || null;
+}
+// Q / W: trim the clip's start or end to the playhead (extends it when the source allows)
+function trimToPlayhead(side) {
+  const c = targetClip(); if (!c) { toast('Select a clip first.'); return; }
+  const t = Math.round(state.time * FPS) / FPS, minDur = 3 / FPS;
+  const m = c.mediaId ? media.get(c.mediaId) : null, isMedia = isMediaClip(c);
+  const o = { start: c.start, dur: c.dur, in: c.in };
+  const snap0 = snapshot(); let limited = false;
+  if (side === 'start') {
+    if (t > c.start + c.dur - minDur) { toast('The playhead is past the end of this clip.'); return; }
+    let ns = t;
+    if (isMedia) { const lim = c.start - c.in; if (ns < lim) { ns = lim; limited = true; } }
+    const d = ns - c.start; c.start = ns; c.dur -= d; if (isMedia) c.in += d;
+  } else {
+    if (t < c.start + minDur) { toast('The playhead is before the start of this clip.'); return; }
+    let ne = t;
+    if (isMedia && m) { const lim = c.start + (m.duration - c.in); if (ne > lim) { ne = lim; limited = true; } }
+    c.dur = ne - c.start;
+  }
+  if (overlaps(c)) { Object.assign(c, o); toast('Another clip is in the way on this track.'); return; }
+  pushHistory(snap0); renderTimeline(); select(c.id);
+  if (limited) toast(side === 'start' ? 'Trimmed to the start of the source clip.' : 'Extended to the end of the source clip.');
+}
+function nudgeSelected(frames) {
+  const c = clipById(state.selected); if (!c) { toast('Select a clip to nudge it.'); return; }
+  const snap0 = snapshot(), o = c.start;
+  c.start = Math.max(0, Math.round((c.start + frames / FPS) * FPS) / FPS);
+  if (overlaps(c)) { c.start = o; toast('Another clip is in the way.'); return; }
+  pushHistory(snap0); renderTimeline(); select(c.id); renderInspector();
+}
 function splitSelected() {
   let c = clipById(state.selected);
   if (!c || !(state.time > c.start + 1 / FPS && state.time < c.start + c.dur - 1 / FPS)) {
@@ -838,7 +953,7 @@ function clipHTML(c) {
   const m = c.mediaId ? media.get(c.mediaId) : null;
   const bg = m && m.thumb ? `background-image:url(${m.thumb});` : '';
   const wave = m && m.peaks ? `<canvas class="wave" data-id="${c.id}"></canvas>` : '';
-  return `<div class="clip ${c.type}${state.selected === c.id ? ' sel' : ''}" data-id="${c.id}" style="left:${c.start * state.pps}px;width:${Math.max(4, c.dur * state.pps)}px;${bg}">${wave}<span class="lbl">${esc(clipName(c))}</span><span class="h h-l"></span><span class="h h-r"></span></div>`;
+  return `<div class="clip ${c.type}${state.selected === c.id ? ' sel' : ''}" data-id="${c.id}" style="left:${c.start * state.pps}px;width:${Math.max(4, c.dur * state.pps)}px;${bg}">${wave}<span class="lbl">${esc(clipName(c))}</span><span class="fade fi" style="width:${(c.props.fadeIn || 0) * state.pps}px"></span><span class="fade fo" style="width:${(c.props.fadeOut || 0) * state.pps}px"></span><span class="fh fh-l" style="left:${(c.props.fadeIn || 0) * state.pps}px"></span><span class="fh fh-r" style="left:calc(100% - ${(c.props.fadeOut || 0) * state.pps}px)"></span><span class="h h-l"></span><span class="h h-r"></span></div>`;
 }
 function renderTimeline() {
   const pps = state.pps, end = projectEnd();
@@ -873,7 +988,27 @@ function drawWave(cv) {
     const bh = Math.max(1, v * h * 0.95); g.fillRect(x, (h - bh) / 2, 1, bh);
   }
 }
-function positionClipEl(el, c) { el.style.left = `${c.start * state.pps}px`; el.style.width = `${Math.max(4, c.dur * state.pps)}px`; }
+function positionClipEl(el, c) {
+  el.style.left = `${c.start * state.pps}px`; el.style.width = `${Math.max(4, c.dur * state.pps)}px`;
+  const fi = (c.props.fadeIn || 0) * state.pps, fo = (c.props.fadeOut || 0) * state.pps;
+  const q = sel => el.querySelector(sel);
+  if (q('.fi')) { q('.fi').style.width = `${fi}px`; q('.fo').style.width = `${fo}px`; q('.fh-l').style.left = `${fi}px`; q('.fh-r').style.left = `calc(100% - ${fo}px)`; }
+}
+// which part of a clip the pointer is over (Pro Tools style smart tool)
+function clipZone(e, el) {
+  const r = el.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, w = r.width;
+  const c = clipById(el.dataset.id); if (!c) return 'move';
+  const fi = (c.props.fadeIn || 0) * state.pps, fo = (c.props.fadeOut || 0) * state.pps;
+  const edge = Math.min(10, Math.max(4, w / 4));
+  if (y < Math.min(14, r.height * 0.4) && w > 24) {
+    // top corners always grab the fade, and so does the fade handle wherever it sits
+    if (x < w / 2 && (x <= 12 || Math.abs(x - fi) <= 8)) return 'fade-in';
+    if (x > w / 2 && (x >= w - 12 || Math.abs(x - (w - fo)) <= 8)) return 'fade-out';
+  }
+  if (x <= edge) return 'trim-l';
+  if (x >= w - edge) return 'trim-r';
+  return 'move';
+}
 function timeFromX(clientX) { const r = $('#rulerLane').getBoundingClientRect(); return Math.max(0, (clientX - r.left) / state.pps); }
 function snapPoints(exId) { const pts = [0, state.time]; for (const k of state.clips) if (k.id !== exId) pts.push(k.start, k.start + k.dur); return pts; }
 function snapVal(v, pts) { if (!state.snap) return { v, hit: false }; const th = 8 / state.pps; let best = v, bd = th, hit = false; for (const p of pts) { const d = Math.abs(p - v); if (d < bd) { bd = d; best = p; hit = true; } } return { v: best, hit }; }
@@ -883,8 +1018,14 @@ function startClipDrag(e, clipEl) {
   e.preventDefault();
   localDrag = c.id;
   if (state.selected !== c.id) select(c.id);
-  const mode = e.target.classList.contains('h-l') ? 'l' : e.target.classList.contains('h-r') ? 'r' : 'move';
-  const snap0 = snapshot(); const o = { start: c.start, dur: c.dur, in: c.in, trackId: c.trackId };
+  const zone = clipZone(e, clipEl);
+  const mode = { 'trim-l': 'l', 'trim-r': 'r', 'fade-in': 'fi', 'fade-out': 'fo' }[zone] || 'move';
+  document.documentElement.dataset.dragcursor = { l: 'trim-l', r: 'trim-r', fi: 'fade', fo: 'fade' }[mode] || 'grabbing';
+  const snap0 = snapshot(); const o = { start: c.start, dur: c.dur, in: c.in, trackId: c.trackId, fi: c.props.fadeIn || 0, fo: c.props.fadeOut || 0 };
+  const same = state.clips.filter(k => k.trackId === c.trackId && k.id !== c.id);
+  const prevEnd = Math.max(0, ...same.filter(k => k.start + k.dur <= o.start + 1e-6).map(k => k.start + k.dur));
+  const nextStart = Math.min(Infinity, ...same.filter(k => k.start >= o.start + o.dur - 1e-6).map(k => k.start));
+  let hitSource = false;
   const x0 = e.clientX; let moved = false; let el = clipEl;
   const m = c.mediaId ? media.get(c.mediaId) : null;
   const media_ = isMediaClip(c); const maxLen = media_ && m ? m.duration : Infinity; const minDur = 3 / FPS;
@@ -906,24 +1047,34 @@ function startClipDrag(e, clipEl) {
       }
     } else if (mode === 'l') {
       let s = snapVal(o.start + dx, pts).v;
-      const minS = media_ ? Math.max(0, o.start - o.in) : 0;
-      s = clamp(s, minS, o.start + o.dur - minDur);
+      const srcMin = media_ ? Math.max(0, o.start - o.in) : 0;
+      hitSource = media_ && s < srcMin - 1e-6;
+      s = clamp(s, Math.max(srcMin, prevEnd), o.start + o.dur - minDur);
       c.start = s; c.dur = o.dur - (s - o.start); if (media_) c.in = o.in + (s - o.start);
-    } else {
+    } else if (mode === 'r') {
       let en = snapVal(o.start + o.dur + dx, pts).v;
-      en = clamp(en, o.start + minDur, media_ ? o.start + (maxLen - o.in) : Infinity);
+      const srcMax = media_ ? o.start + (maxLen - o.in) : Infinity;
+      hitSource = en > srcMax + 1e-6;
+      en = clamp(en, o.start + minDur, Math.min(srcMax, nextStart));
       c.dur = en - o.start;
+    } else if (mode === 'fi') {
+      c.props.fadeIn = clamp(Math.round((o.fi + dx) * FPS) / FPS, 0, Math.max(0, c.dur - (c.props.fadeOut || 0)));
+    } else {
+      c.props.fadeOut = clamp(Math.round((o.fo - dx) * FPS) / FPS, 0, Math.max(0, c.dur - (c.props.fadeIn || 0)));
     }
+    el.classList.toggle('limit', hitSource);
     positionClipEl(el, c);
   };
   const onUp = () => {
     window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onUp);
-    el.classList.remove('dragging');
+    el.classList.remove('dragging'); el.classList.remove('limit');
+    delete document.documentElement.dataset.dragcursor;
     localDrag = null;
     if (live.pendingRender) { live.pendingRender = false; setTimeout(liveRender, 0); }
     if (!moved) return;
+    if (hitSource) toast(mode === 'l' ? 'That\u2019s the start of the source clip.' : 'That\u2019s the end of the source clip. It can\u2019t be extended further.');
     if (overlaps(c)) {
-      Object.assign(c, o); renderTimeline();
+      c.start = o.start; c.dur = o.dur; c.in = o.in; c.trackId = o.trackId; c.props.fadeIn = o.fi; c.props.fadeOut = o.fo; renderTimeline();
       const e2 = inner.querySelector(`.clip[data-id="${c.id}"]`); if (e2) e2.classList.add('shake');
       toast('That spot is taken on this track.');
       return;
@@ -942,7 +1093,9 @@ function startScrub(e) {
 inner.addEventListener('pointerdown', e => {
   if (e.button > 0) return;
   const tbtn = e.target.closest('[data-toggle]'); if (tbtn) return;
-  const clipEl = e.target.closest('.clip'); if (clipEl) { startClipDrag(e, clipEl); return; }
+  const clipEl = e.target.closest('.clip');
+  if (clipEl && state.tool === 'blade') { e.preventDefault(); bladeAt(e, clipEl); return; }
+  if (clipEl) { startClipDrag(e, clipEl); return; }
   if (e.target.closest('#rulerLane')) { startScrub(e); return; }
   const lane = e.target.closest('.lane[data-track]');
   if (lane) { select(null); if (e.pointerType === 'mouse') startScrub(e); else seek(timeFromX(e.clientX)); }
@@ -1006,7 +1159,7 @@ function renderInspector() {
         <p class="lede">Select a clip to edit it. Higher tracks draw on top of lower ones, so put titles above your footage.</p>
       </div>
       <div class="isec"><h3>Shortcuts</h3>
-        <div class="keys"><kbd>Space</kbd><span>Play / pause</span><kbd>S</kbd><span>Split at playhead</span><kbd>Del</kbd><span>Delete clip</span><kbd>← →</kbd><span>Step one frame</span><kbd>Ctrl Z</kbd><span>Undo</span><kbd>Ctrl D</kbd><span>Duplicate</span><kbd>Ctrl S</kbd><span>Save to Drive</span></div>
+        <div class="keys"><kbd>Space</kbd><span>Play / pause</span><kbd>A</kbd><span>Select tool</span><kbd>B</kbd><span>Blade tool (Shift-click cuts every track)</span><kbd>Q / W</kbd><span>Trim start / end to playhead</span><kbd>Alt ← →</kbd><span>Nudge clip one frame</span><kbd>S</kbd><span>Split at playhead</span><kbd>Del</kbd><span>Delete clip</span><kbd>← →</kbd><span>Step one frame</span><kbd>Ctrl Z</kbd><span>Undo</span><kbd>Ctrl D</kbd><span>Duplicate</span><kbd>Ctrl S</kbd><span>Save to Drive</span></div>
       </div>`;
     return;
   }
@@ -1113,7 +1266,10 @@ $('#exSave').addEventListener('click', () => {
 /* ---------- Google sign-in + Drive ---------- */
 const CFG = window.LAYERLINE_CONFIG || {};
 const cloudReady = !!(CFG.googleClientId && CFG.googleApiKey);
-const SCOPE = 'https://www.googleapis.com/auth/drive.file' + (CFG.firebase ? ' openid email profile' : ''); // email lets live editing know who you are
+// teamMode: full Drive access, so files shared with you open without picking them (fine for a team on the test-user list).
+// Without it Layerline uses drive.file: it only sees files it created or that you picked.
+const TEAM_MODE = CFG.teamMode === true;
+const SCOPE = (TEAM_MODE ? 'https://www.googleapis.com/auth/drive' : 'https://www.googleapis.com/auth/drive.file') + (CFG.firebase ? ' openid email profile' : ''); // email lets live editing know who you are
 const DRIVE_API = 'https://www.googleapis.com/drive/v3', UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 const CHUNK = 8 * 1024 * 1024; // must be a multiple of 256 KiB
 const cloud = { token: null, exp: 0, user: null, folderId: null, tokenClient: null, waiters: [], projectFileId: null, uploads: 0, backup: true };
@@ -1361,7 +1517,6 @@ async function backupMedia(m) {
     const folder = await ensureFolder();
     const f = await uploadResumable(m.file, { name: m.name, parents: [folder], appProperties: { layerline: 'media' } }, p => { m.progress = p; j.set(p); updateMediaProgress(m); });
     m.driveId = f.id; m.cloud = 'saved'; m.err = null; dirty = true; j.done();
-    if (live.room) shareMediaWithMembers(); // collaborators can open it right away
   } catch (e) {
     m.cloud = 'error'; m.err = e.message; j.fail(`Couldn’t save ${m.name} to Drive. ${e.message}`);
   } finally { cloud.uploads--; renderBin(); renderCloud(); }
@@ -1611,7 +1766,7 @@ async function shareMediaWithMembers() {
   for (const m of media.values()) {
     if (!m.driveId || cloud.sharedIds.has(m.driveId)) continue;
     try { for (const e of others) await grant(m.driveId, e, 'reader', false); cloud.sharedIds.add(m.driveId); }
-    catch (err) { failed++; }
+    catch (err) { failed++; live.shareFailed.add(m.driveId); }
   }
   return failed;
 }
@@ -1727,7 +1882,7 @@ const FB = CFG.firebase && CFG.firebase.databaseURL ? CFG.firebase : null;
 const FB_VER = '10.12.2';
 const PEER_COLORS = ['#ff7a7a', '#5cb3ff', '#5fd47a', '#ffd24d', '#d68cff', '#ffa04d', '#3fd0e6', '#ff7ab8'];
 const live = { room: null, roomId: null, uid: null, presRef: null, peers: {}, lastSent: {}, recent: new Map(), loading: new Map(),
-  lastTick: 0, lastPresAt: 0, cursor: null, cursorDirty: false, lastSel: undefined, lastT: -1, joining: false, pendingRender: false, missTimer: null };
+  lastTick: 0, lastPresAt: 0, shareFailed: new Set(), shareBusy: false, cursor: null, cursorDirty: false, lastSel: undefined, lastT: -1, joining: false, pendingRender: false, missTimer: null };
 let localDrag = null;
 const encKey = e => String(e).toLowerCase().replace(/\./g, ',');
 function colorFor(s) { let h = 7; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return PEER_COLORS[h % PEER_COLORS.length]; }
@@ -1756,7 +1911,15 @@ function liveLocal() {
   };
   for (const c of state.clips) out['clips/' + c.id] = JSON.stringify(c);
   const addMedia = (id, name, type, driveId) => { if (driveId) out['media/' + id] = JSON.stringify({ name, type, driveId }); };
-  for (const m of media.values()) addMedia(m.id, m.name, m.type, m.driveId);
+  // a clip goes into the live session only once collaborators have Drive access to it
+  const shared = cloud.members.some(e => e && e !== myEmail());
+  let needShare = false;
+  for (const m of media.values()) {
+    if (!m.driveId) continue;
+    if (shared && !cloud.sharedIds.has(m.driveId) && !live.shareFailed.has(m.driveId)) { needShare = true; continue; }
+    addMedia(m.id, m.name, m.type, m.driveId);
+  }
+  if (needShare && !live.shareBusy) { live.shareBusy = true; shareMediaWithMembers().catch(() => {}).finally(() => { live.shareBusy = false; }); }
   for (const pm of cloud.missing) addMedia(pm.id, pm.name, pm.type, pm.driveId);
   for (const pm of live.loading.values()) addMedia(pm.id, pm.name, pm.type, pm.driveId);
   return out;
@@ -1801,6 +1964,7 @@ function liveApply(doc) {
     if (!k.startsWith('media/')) continue;
     const id = k.slice(6);
     live.lastSent[k] = remote[k];
+    try { const d = JSON.parse(remote[k]); if (d.driveId) cloud.sharedIds.add(d.driveId); } catch (e) {} // a collaborator already shared it
     if (media.has(id) || live.loading.has(id) || cloud.missing.some(x => x.id === id)) continue;
     liveLoadMedia(Object.assign({ id }, JSON.parse(remote[k])));
   }
@@ -1816,7 +1980,16 @@ function liveRender() {
 }
 async function liveLoadMedia(pm) {
   live.loading.set(pm.id, pm);
-  try { await loadDriveMedia(pm); toast(`A collaborator added ${pm.name}`); }
+  try {
+    // Drive can take a moment to apply new sharing, so try a few times before asking
+    let ok = false, err = null;
+    for (const wait of [0, 1500, 3500]) {
+      if (wait) await sleep(wait);
+      try { await loadDriveMedia(pm); ok = true; break; } catch (e) { err = e; }
+    }
+    if (!ok) throw err;
+    toast(`A collaborator added ${pm.name}`);
+  }
   catch (e) {
     cloud.missing.push(pm);
     clearTimeout(live.missTimer);
@@ -2038,6 +2211,8 @@ $('#stepFwd').addEventListener('click', () => step(1));
 $('#undoBtn').addEventListener('click', undo);
 $('#redoBtn').addEventListener('click', redo);
 $('#splitBtn').addEventListener('click', splitSelected);
+$('#toolSel').addEventListener('click', () => setTool('select'));
+$('#toolBlade').addEventListener('click', () => setTool('blade'));
 $('#dupBtn').addEventListener('click', duplicateSelected);
 $('#delBtn').addEventListener('click', () => { if (!state.selected) toast('Select a clip to delete.'); else deleteSelected(); });
 $('#addVTrack').addEventListener('click', () => addTrack('visual'));
@@ -2083,13 +2258,21 @@ document.addEventListener('keydown', e => {
   else if (mod && k === 's') { e.preventDefault(); saveProject(); }
   else if (mod && k === 'd') { e.preventDefault(); duplicateSelected(); }
   else if (!mod && k === 's') { e.preventDefault(); splitSelected(); }
+  else if (mod && k === 'k') { e.preventDefault(); splitSelected(); }
+  else if (!mod && !e.altKey && k === 'a') { e.preventDefault(); setTool('select'); }
+  else if (!mod && !e.altKey && k === 'b') { e.preventDefault(); setTool('blade'); }
+  else if (!mod && k === 'q') { e.preventDefault(); trimToPlayhead('start'); }
+  else if (!mod && k === 'w') { e.preventDefault(); trimToPlayhead('end'); }
+  else if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); nudgeSelected(e.shiftKey ? -10 : -1); }
+  else if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); nudgeSelected(e.shiftKey ? 10 : 1); }
   else if (e.key === 'Delete' || e.key === 'Backspace') { if (state.selected) { e.preventDefault(); deleteSelected(); } }
   else if (e.key === 'ArrowLeft') { e.preventDefault(); step(e.shiftKey ? -FPS : -1); }
   else if (e.key === 'ArrowRight') { e.preventDefault(); step(e.shiftKey ? FPS : 1); }
   else if (e.key === 'Home') { e.preventDefault(); pause(); seek(0); }
-  else if (e.key === 'Escape') select(null);
+  else if (e.key === 'Escape') { select(null); setTool('select'); }
 });
-document.addEventListener('keyup', e => { if (e.code === 'Space' && e.target.tagName === 'BUTTON') e.preventDefault(); });
+document.addEventListener('keyup', e => {
+  if (e.key === 'Shift' && state.tool === 'blade') bladeGuide.hidden = true; if (e.code === 'Space' && e.target.tagName === 'BUTTON') e.preventDefault(); });
 
 /* ---------- example project ---------- */
 function seedDemo() {

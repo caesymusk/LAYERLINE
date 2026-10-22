@@ -197,6 +197,8 @@ kbd{font-family:var(--font-mono);font-size:10.5px;background:var(--panel-2);bord
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 [hidden]{display:none!important}
+.share-form{display:flex;gap:8px;flex-wrap:wrap}
+.share-form input{flex:1 1 200px;min-width:0;height:34px;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:0 10px}
 .buf{font-size:11.5px;color:var(--accent);margin-left:6px}
 body{margin:0}
 .cstatus{color:var(--muted);font-size:12px;white-space:nowrap}
@@ -242,6 +244,7 @@ button.cstat:hover{color:var(--accent);border-color:var(--accent)}
     </select>
     <button class="btn" id="projectsBtn">Projects</button>
     <button class="btn" id="saveBtn" title="Save project to Google Drive (Ctrl+S)">Save to Drive</button>
+    <button class="btn" id="shareBtn" title="Share this project with another Google account">Share</button>
     <button class="btn primary" id="exportBtn">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>
       Export video
@@ -338,7 +341,28 @@ button.cstat:hover{color:var(--accent);border-color:var(--accent)}
     <h3 id="pTitle">Your projects</h3>
     <p class="muted">Projects and their media live in the Layerline folder of your Google Drive. Starting a new project clears the editor, so save first if you want to keep your changes.</p>
     <ul class="dlist" id="pList"></ul>
-    <div class="row-btns"><button class="btn" id="pNew">New project</button><button class="btn" id="pClose">Close</button></div>
+    <div class="row-btns"><button class="btn" id="pShared">Open shared project</button><button class="btn" id="pNew">New project</button><button class="btn" id="pClose">Close</button></div>
+  </div>
+</div>
+<div class="modal" id="shareModal" hidden role="dialog" aria-modal="true" aria-labelledby="sTitle">
+  <div class="sheet">
+    <h3 id="sTitle">Share project</h3>
+    <p class="muted">Google Drive emails them a note. To open it, they go to Layerline, sign in with that Google account, and choose Projects → Open shared project. While Layerline is in testing, their account must be on your test-user list in Google Cloud.</p>
+    <form class="share-form" id="sForm">
+      <input type="email" id="sEmail" placeholder="name@gmail.com" required aria-label="Email address" autocomplete="email">
+      <select id="sRole" aria-label="Access"><option value="writer">Can edit</option><option value="reader">Can view</option></select>
+      <button class="btn primary" type="submit" id="sSubmit">Share</button>
+    </form>
+    <ul class="dlist" id="sList"></ul>
+    <div class="row-btns"><button class="btn" id="sClose">Close</button></div>
+  </div>
+</div>
+<div class="modal" id="missModal" hidden role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="sheet">
+    <h3 id="mTitle">Choose the shared clips</h3>
+    <p class="muted">This project uses files someone shared with you. Google asks you to choose each one once before Layerline can open it. In the next window, open <b>Shared with me</b> and select these files:</p>
+    <ul class="dlist" id="mList"></ul>
+    <div class="row-btns"><button class="btn" id="mLater">Skip for now</button><button class="btn primary" id="mPick">Choose files</button></div>
   </div>
 </div>
 <div class="jobs" id="jobs" hidden aria-live="polite"></div>
@@ -1412,14 +1436,16 @@ function projectData() {
     app: 'layerline', version: 1,
     name: $('#projName').value.trim() || 'Untitled project',
     aspect: state.aspect, tracks: state.tracks, clips: state.clips,
-    media: [...media.values()].map(m => ({ id: m.id, name: m.name, type: m.type, driveId: m.driveId || null }))
+    media: [...media.values()].map(m => ({ id: m.id, name: m.name, type: m.type, driveId: m.driveId || null })),
+    members: cloud.members, sharedIds: [...cloud.sharedIds]
   };
 }
 let saving = false;
-async function saveProject() {
-  if (saving) return;
-  if (!(await ensureSignedIn())) return;
+async function saveProject(opts = {}) {
+  if (saving) return false;
+  if (!(await ensureSignedIn())) return false;
   saving = true; renderCloud();
+  let viewOnlyCopy = false;
   const j = job('Saving project to Drive');
   try {
     const pending = [...media.values()].filter(m => !m.driveId);
@@ -1430,21 +1456,27 @@ async function saveProject() {
     }
     j.label('Saving project to Drive');
     const missing = [...media.values()].filter(m => !m.driveId).length;
+    await shareMediaWithMembers();
     const data = projectData(), body = JSON.stringify(data), fname = `${data.name}.layerline.json`;
     const folder = await ensureFolder();
     if (cloud.projectFileId) {
       try {
         await gfetch(`${UPLOAD_API}/files/${cloud.projectFileId}?uploadType=media`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body });
         await gfetch(`${DRIVE_API}/files/${cloud.projectFileId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: fname }) });
-      } catch (e) { if (e.status === 404) cloud.projectFileId = null; else throw e; }
+      } catch (e) {
+        if (e.status === 404) cloud.projectFileId = null;
+        else if (e.status === 403) { cloud.projectFileId = null; viewOnlyCopy = true; } // view-only access: save a copy instead
+        else throw e;
+      }
     }
     if (!cloud.projectFileId) {
       const f = await uploadResumable(new Blob([body], { type: 'application/json' }), { name: fname, parents: [folder], appProperties: { layerline: 'project' } }, () => {});
       cloud.projectFileId = f.id;
     }
     dirty = false;
-    j.done(missing ? `Project saved, but ${missing} file${missing > 1 ? 's' : ''} didn’t upload and will be missing when you reopen it.` : `Saved “${data.name}” to Drive`);
-  } catch (e) { j.fail(`Couldn’t save the project. ${e.message}`); }
+    j.done(opts.quiet ? '' : viewOnlyCopy ? 'You can only view the original, so this was saved as your own copy.' : missing ? `Project saved, but ${missing} file${missing > 1 ? 's' : ''} didn’t upload and will be missing when you reopen it.` : `Saved “${data.name}” to Drive`);
+    return true;
+  } catch (e) { j.fail(`Couldn’t save the project. ${e.message}`); return false; }
   finally { saving = false; renderCloud(); }
 }
 async function openProjects() {
@@ -1472,6 +1504,7 @@ function clearProject() {
   for (const id of [...els.keys()]) dropEl(id);
   for (const m of media.values()) if (m.url && m.url.startsWith('blob:')) URL.revokeObjectURL(m.url);
   media.clear(); state.clips = []; state.selected = null;
+  cloud.members = []; cloud.sharedIds = new Set(); cloud.missing = [];
   undoStack.length = 0; redoStack.length = 0; updateUndo();
 }
 function bumpIds() {
@@ -1489,26 +1522,24 @@ async function loadProject(fileId) {
     const p = await r.json();
     if (!p || p.app !== 'layerline') throw new Error('That file isn’t a Layerline project.');
     clearProject();
+    cloud.members = Array.isArray(p.members) ? p.members.map(x => String(x).toLowerCase()) : [];
+    cloud.sharedIds = new Set(Array.isArray(p.sharedIds) ? p.sharedIds : []);
     state.tracks = p.tracks || []; renderBin(); renderTimeline();
-    const list = p.media || []; let failed = 0, i = 0;
+    const list = p.media || []; let failed = 0, i = 0; const missing = [];
     for (const pm of list) {
       i++; j.label(`Loading ${i} of ${list.length}: ${pm.name}`); j.set(0);
       if (!pm.driveId) { failed++; continue; }
-      if (pm.type === 'video' && (await setupStreaming())) {
-        try { await importStream({ id: pm.driveId, name: pm.name }, { id: pm.id }); continue; } catch (e) { /* fall back to download */ }
-      }
-      try {
-        const blob = await downloadDrive(pm.driveId, 0, j.set);
-        await importFile(new File([blob], pm.name, { type: fileTypeFor(pm.type, blob.type) }), { id: pm.id, driveId: pm.driveId });
-      } catch (e) { failed++; }
+      try { await loadDriveMedia(pm, j.set); } catch (e) { missing.push(pm); }
     }
+    cloud.missing = missing;
     state.clips = p.clips || [];
     bumpIds();
     setAspect(ASPECTS[p.aspect] ? p.aspect : '16:9');
     $('#projName').value = p.name || 'Untitled project';
     cloud.projectFileId = fileId; dirty = false;
     renderBin(); renderTimeline(); renderInspector(); seek(0); tlScroll.scrollLeft = 0;
-    j.done(failed ? `Opened “${p.name}”, but ${failed} media file${failed > 1 ? 's' : ''} couldn’t be downloaded from Drive.` : `Opened “${p.name}”`);
+    j.done(missing.length ? '' : failed ? `Opened “${p.name}”, but ${failed} media file${failed > 1 ? 's' : ''} weren’t saved with it.` : `Opened “${p.name}”`);
+    if (missing.length) showMissing();
   } catch (e) { j.fail(`Couldn’t open the project. ${e.message}`); }
 }
 function newProject() {
@@ -1526,6 +1557,143 @@ function newProject() {
   renderBin(); renderTimeline(); renderInspector(); seek(0);
   toast('Started a new project');
 }
+
+function pLabel(v, t) { return typeof v.setLabel === 'function' ? v.setLabel(t) : v; }
+async function loadDriveMedia(pm, onProg) {
+  if (pm.type === 'video' && (await setupStreaming())) {
+    try { await importStream({ id: pm.driveId, name: pm.name }, { id: pm.id }); return; } catch (e) { /* fall back to download */ }
+  }
+  const blob = await downloadDrive(pm.driveId, 0, onProg || (() => {}));
+  await importFile(new File([blob], pm.name, { type: fileTypeFor(pm.type, blob.type) }), { id: pm.id, driveId: pm.driveId });
+}
+
+/* sharing */
+cloud.members = []; cloud.sharedIds = new Set(); cloud.missing = [];
+const shareModal = $('#shareModal'), missModal = $('#missModal');
+const myEmail = () => ((cloud.user && cloud.user.emailAddress) || '').toLowerCase();
+async function grant(id, email, role, notify, message) {
+  const body = JSON.stringify({ type: 'user', role, emailAddress: email });
+  const url = n => `${DRIVE_API}/files/${encodeURIComponent(id)}/permissions?supportsAllDrives=true&sendNotificationEmail=${n}` + (n && message ? `&emailMessage=${encodeURIComponent(message)}` : '');
+  try { await gfetch(url(notify), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }); }
+  catch (e) {
+    // Drive insists on an email for addresses without a Google account
+    if (!notify && e.status === 400) await gfetch(url(true), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+    else throw e;
+  }
+}
+// give every project member read access to media they don't have yet (called on every save)
+async function shareMediaWithMembers() {
+  const others = cloud.members.filter(e => e && e !== myEmail());
+  if (!others.length) return 0;
+  let failed = 0;
+  for (const m of media.values()) {
+    if (!m.driveId || cloud.sharedIds.has(m.driveId)) continue;
+    try { for (const e of others) await grant(m.driveId, e, 'reader', false); cloud.sharedIds.add(m.driveId); }
+    catch (err) { failed++; }
+  }
+  return failed;
+}
+function renderShareList() {
+  const list = $('#sList'), others = cloud.members.filter(e => e && e !== myEmail());
+  if (!others.length) { list.innerHTML = '<li class="dmsg">This project isn’t shared with anyone yet.</li>'; return; }
+  list.innerHTML = '';
+  for (const e of others) {
+    const li = document.createElement('li'); li.className = 'drow prow';
+    li.innerHTML = '<span class="nm"><b></b><span>Has access</span></span><span></span><span></span>';
+    li.querySelector('b').textContent = e;
+    list.appendChild(li);
+  }
+}
+let sharing = false;
+async function shareProject(email, role) {
+  if (sharing) return;
+  email = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('Enter a full email address, like name@gmail.com.'); return; }
+  if (!(await ensureSignedIn())) return;
+  if (email === myEmail()) { toast('That’s the account you’re signed in with. Enter the other account’s email.'); return; }
+  sharing = true; $('#sSubmit').disabled = true;
+  const j = job(`Sharing with ${email}`);
+  try {
+    if (myEmail() && !cloud.members.includes(myEmail())) cloud.members.push(myEmail());
+    const isNew = !cloud.members.includes(email);
+    if (isNew) cloud.members.push(email);
+    if (!(await saveProject({ quiet: true })) || !cloud.projectFileId) throw new Error('The project couldn’t be saved first.');
+    const link = location.href.split('#')[0].split('?')[0];
+    await grant(cloud.projectFileId, email, role, true, `I shared a Layerline video project with you. Open ${link} , sign in with this Google account, then choose Projects → Open shared project.`);
+    j.done(`Shared with ${email}. Google Drive will email them.`);
+    $('#sEmail').value = '';
+  } catch (e) { j.fail(`Couldn’t share the project. ${e.message}`); }
+  finally { sharing = false; $('#sSubmit').disabled = false; renderShareList(); }
+}
+async function openSharedProject() {
+  if (!(await ensureSignedIn())) return;
+  try { await loadPicker(); } catch (e) { toast(e.message); return; }
+  let token; try { token = await getToken(); } catch (e) { toast(e.message); return; }
+  const P = google.picker;
+  const shared = pLabel(new P.DocsView(P.ViewId.DOCS).setOwnedByMe(false).setMimeTypes('application/json'), 'Shared with me');
+  const mine = pLabel(new P.DocsView(P.ViewId.DOCS).setMimeTypes('application/json'), 'All projects');
+  const b = new P.PickerBuilder().addView(shared).addView(mine)
+    .setOAuthToken(token).setDeveloperKey(CFG.googleApiKey).setTitle('Open a shared Layerline project')
+    .setCallback(data => {
+      if (data[P.Response.ACTION] !== P.Action.PICKED) return;
+      const d = (data[P.Response.DOCUMENTS] || [])[0]; if (!d) return;
+      if (!/\.layerline\.json$/i.test(d[P.Document.NAME] || '')) { toast('Choose a file whose name ends in .layerline.json.'); return; }
+      loadProject(d[P.Document.ID]);
+    });
+  if (CFG.googleAppId) b.setAppId(String(CFG.googleAppId));
+  if (P.Feature.SUPPORT_DRIVES) b.enableFeature(P.Feature.SUPPORT_DRIVES);
+  projModal.hidden = true;
+  b.build().setVisible(true);
+}
+function showMissing() {
+  const list = $('#mList'); list.innerHTML = '';
+  for (const pm of cloud.missing) {
+    const li = document.createElement('li'); li.className = 'drow prow';
+    li.innerHTML = '<span class="nm"><b></b><span></span></span><span></span><span></span>';
+    li.querySelector('b').textContent = pm.name; li.querySelector('.nm span').textContent = TYPE_LABEL[pm.type] || '';
+    list.appendChild(li);
+  }
+  missModal.hidden = false;
+}
+async function pickMissing() {
+  missModal.hidden = true;
+  try { await loadPicker(); } catch (e) { toast(e.message); return; }
+  let token; try { token = await getToken(); } catch (e) { toast(e.message); return; }
+  const P = google.picker;
+  const shared = pLabel(new P.DocsView(P.ViewId.DOCS).setIncludeFolders(true).setOwnedByMe(false), 'Shared with me');
+  const all = pLabel(new P.DocsView(P.ViewId.DOCS).setIncludeFolders(true), 'All files');
+  const b = new P.PickerBuilder().addView(shared).addView(all)
+    .enableFeature(P.Feature.MULTISELECT_ENABLED)
+    .setOAuthToken(token).setDeveloperKey(CFG.googleApiKey).setTitle('Choose the shared clips')
+    .setCallback(async data => {
+      if (data[P.Response.ACTION] !== P.Action.PICKED) return;
+      const docs = data[P.Response.DOCUMENTS] || [];
+      const j = job('Loading shared clips');
+      let got = 0;
+      for (const d of docs) {
+        const pm = cloud.missing.find(x => x.driveId === d[P.Document.ID]);
+        if (!pm) continue;
+        j.label(`Loading ${pm.name}`); j.set(0);
+        try { await loadDriveMedia(pm, j.set); cloud.missing = cloud.missing.filter(x => x !== pm); got++; } catch (e) {}
+      }
+      renderBin(); renderTimeline(); renderInspector();
+      const left = cloud.missing.length;
+      j.done(left ? `${got ? `Loaded ${got}. ` : ''}${left} clip${left > 1 ? 's are' : ' is'} still missing. Choose ${left > 1 ? 'them' : 'it'} with the same names.` : 'All shared clips loaded.');
+      if (left && got) showMissing();
+    });
+  if (CFG.googleAppId) b.setAppId(String(CFG.googleAppId));
+  if (P.Feature.SUPPORT_DRIVES) b.enableFeature(P.Feature.SUPPORT_DRIVES);
+  b.build().setVisible(true);
+}
+$('#shareBtn').addEventListener('click', async () => {
+  if (!(await ensureSignedIn())) return;
+  renderShareList(); shareModal.hidden = false; $('#sEmail').focus();
+});
+$('#sForm').addEventListener('submit', e => { e.preventDefault(); shareProject($('#sEmail').value, $('#sRole').value); });
+$('#sClose').addEventListener('click', () => { shareModal.hidden = true; });
+$('#pShared').addEventListener('click', openSharedProject);
+$('#mPick').addEventListener('click', pickMissing);
+$('#mLater').addEventListener('click', () => { missModal.hidden = true; toast('Missing clips show as "Missing media". Reopen the project to choose them later.'); });
 
 /* top bar state */
 function renderCloud() {
@@ -1628,6 +1796,7 @@ const typing = t => t && t.closest && t.closest('input,textarea,select,[contente
 document.addEventListener('keydown', e => {
   if (!modal.hidden) { if (e.key === 'Escape' && !exporting) closeModal(); return; }
   if (!projModal.hidden) { if (e.key === 'Escape') projModal.hidden = true; return; }
+  if (!shareModal.hidden || !missModal.hidden) { if (e.key === 'Escape') { shareModal.hidden = true; missModal.hidden = true; } return; }
   if (typing(e.target)) return;
   const mod = e.metaKey || e.ctrlKey; const k = e.key.toLowerCase();
   if (e.code === 'Space') { e.preventDefault(); togglePlay(); }

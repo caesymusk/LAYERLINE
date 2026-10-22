@@ -473,13 +473,18 @@ function sync(t) {
     if (active) {
       const target = c.in + (t - c.start);
       if (state.playing) {
-        if (el.paused) { try { el.currentTime = target; } catch (e) {} const p = el.play(); if (p && p.catch) p.catch(() => {}); }
+        if (el.paused) { if (Math.abs(el.currentTime - target) > 0.08) { try { el.currentTime = target; } catch (e) {} } const p = el.play(); if (p && p.catch) p.catch(() => {}); }
         else if (Math.abs(el.currentTime - target) > 0.25) { try { el.currentTime = target; } catch (e) {} }
       } else {
         if (!el.paused) el.pause();
         if (!el.seeking && Math.abs(el.currentTime - target) > 1 / (FPS * 2)) { try { el.currentTime = target; } catch (e) {} }
       }
-    } else if (!el.paused) el.pause();
+    } else {
+      if (!el.paused) el.pause();
+      // Pre-roll: park an upcoming clip on its first frame so the cut is seamless.
+      const lead = c.start - t;
+      if (lead > 0 && lead < 2.5 && !el.seeking && Math.abs(el.currentTime - c.in) > 0.02) { try { el.currentTime = c.in; } catch (e) {} }
+    }
     let vol = (c.props.volume ?? 1) * fadeFactor(c, t);
     if (tr && tr.off) vol = 0;
     const n = nodes.get(c.id);
@@ -539,7 +544,20 @@ function drawClip(c, t) {
   }
   ctx.restore();
 }
+let lastGoodFrame = 0;
+function videoFramesReady(t) {
+  for (const c of state.clips) {
+    if (c.type !== 'video' || t < c.start || t >= c.start + c.dur) continue;
+    const tr = trackById(c.trackId); if (!tr || tr.off) continue;
+    const el = els.get(c.id);
+    if (!el || el.readyState < 2 || el.seeking) return false;
+  }
+  return true;
+}
 function draw(t) {
+  // If a video layer is still finding its frame, keep the last picture instead of flashing black.
+  if (!videoFramesReady(t)) { if (performance.now() - lastGoodFrame < 600) return; }
+  else lastGoodFrame = performance.now();
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
   const vis = state.tracks.filter(k => k.kind === 'visual' && !k.off);

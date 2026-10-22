@@ -1212,9 +1212,12 @@ function setupStreaming() {
   if (!streamReady) streamReady = (async () => {
     try {
       await navigator.serviceWorker.register('sw.js', { scope: './' });
-      await navigator.serviceWorker.ready;
+      const reg = await navigator.serviceWorker.ready;
       if (!navigator.serviceWorker.controller) {
-        await new Promise(r => { navigator.serviceWorker.addEventListener('controllerchange', r, { once: true }); setTimeout(r, 4000); });
+        // A hard reload (Cmd+Shift+R) opens the page without the worker; ask it to take over.
+        const changed = new Promise(r => { navigator.serviceWorker.addEventListener('controllerchange', r, { once: true }); setTimeout(r, 4000); });
+        if (reg.active) reg.active.postMessage({ type: 'claim' });
+        await changed;
       }
       pushTokenToWorker();
       return !!navigator.serviceWorker.controller;

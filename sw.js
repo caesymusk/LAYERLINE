@@ -20,6 +20,7 @@ self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
 self.addEventListener('message', e => {
   if (e.data && e.data.type === 'token') token = e.data.token || null;
   if (e.data && e.data.type === 'clear-cache') { blocks.clear(); cacheBytes = 0; }
+  if (e.data && e.data.type === 'claim') e.waitUntil(self.clients.claim()); // take over pages opened with a hard reload
 });
 
 async function askToken(clientId, refresh) {

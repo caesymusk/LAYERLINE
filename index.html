@@ -197,6 +197,16 @@ kbd{font-family:var(--font-mono);font-size:10.5px;background:var(--panel-2);bord
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 [hidden]{display:none!important}
+#peerLayer{position:fixed;inset:0;pointer-events:none;z-index:65;overflow:hidden}
+.pc{position:absolute;left:0;top:0;will-change:transform;transition:transform .09s linear,opacity .15s}
+.pc svg{display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}
+.pc span{position:absolute;left:13px;top:15px;background:var(--pc);color:#141414;font-size:11px;font-weight:600;line-height:1;padding:3px 6px;border-radius:4px;white-space:nowrap}
+.pph{position:absolute;left:0;top:0;width:2px;background:var(--pc);will-change:transform;transition:transform .09s linear}
+.peers{display:flex;align-items:center;gap:4px}
+.peer{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--pc);color:#141414;font-weight:700;font-size:11px;border:2px solid var(--bg);margin-left:-6px}
+.live-pill{font-size:11px;font-weight:600;color:var(--clip-audio);border:1px solid color-mix(in srgb,var(--clip-audio) 55%,transparent);border-radius:999px;padding:3px 8px;margin-right:8px}
+.clip.psel{box-shadow:inset 0 0 0 2px var(--pc),0 0 0 1px var(--pc)}
+@media (prefers-reduced-motion:reduce){.pc,.pph{transition:none}}
 .share-form{display:flex;gap:8px;flex-wrap:wrap}
 .share-form input{flex:1 1 200px;min-width:0;height:34px;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:0 10px}
 .buf{font-size:11.5px;color:var(--accent);margin-left:6px}
@@ -242,6 +252,7 @@ button.cstat:hover{color:var(--accent);border-color:var(--accent)}
       <option value="9:16">9:16 Vertical (Reels, Shorts, TikTok)</option>
       <option value="1:1">1:1 Square</option>
     </select>
+    <div class="peers" id="peers" hidden></div>
     <button class="btn" id="projectsBtn">Projects</button>
     <button class="btn" id="saveBtn" title="Save project to Google Drive (Ctrl+S)">Save to Drive</button>
     <button class="btn" id="shareBtn" title="Share this project with another Google account">Share</button>
@@ -320,6 +331,7 @@ button.cstat:hover{color:var(--accent);border-color:var(--accent)}
 </div>
 
 <div id="mediaPool" aria-hidden="true"></div>
+<div id="peerLayer" aria-hidden="true"></div>
 
 <div class="modal" id="exportModal" hidden role="dialog" aria-modal="true" aria-labelledby="exTitle">
   <div class="sheet">
@@ -647,6 +659,7 @@ function frame(ts) {
   draw(state.time);
   updatePlayhead(state.playing);
   if (exporting) { const end = projectEnd() || 1; $('#exBar').style.width = `${clamp(state.time / end, 0, 1) * 100}%`; $('#exTime').textContent = `${tc(state.time)} / ${tc(end)}`; }
+  liveTick(ts);
   requestAnimationFrame(frame);
 }
 
@@ -868,6 +881,7 @@ function snapVal(v, pts) { if (!state.snap) return { v, hit: false }; const th =
 function startClipDrag(e, clipEl) {
   const c = clipById(clipEl.dataset.id); if (!c) return;
   e.preventDefault();
+  localDrag = c.id;
   if (state.selected !== c.id) select(c.id);
   const mode = e.target.classList.contains('h-l') ? 'l' : e.target.classList.contains('h-r') ? 'r' : 'move';
   const snap0 = snapshot(); const o = { start: c.start, dur: c.dur, in: c.in, trackId: c.trackId };
@@ -905,6 +919,8 @@ function startClipDrag(e, clipEl) {
   const onUp = () => {
     window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onUp);
     el.classList.remove('dragging');
+    localDrag = null;
+    if (live.pendingRender) { live.pendingRender = false; setTimeout(liveRender, 0); }
     if (!moved) return;
     if (overlaps(c)) {
       Object.assign(c, o); renderTimeline();
@@ -1097,7 +1113,7 @@ $('#exSave').addEventListener('click', () => {
 /* ---------- Google sign-in + Drive ---------- */
 const CFG = window.LAYERLINE_CONFIG || {};
 const cloudReady = !!(CFG.googleClientId && CFG.googleApiKey);
-const SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const SCOPE = 'https://www.googleapis.com/auth/drive.file' + (CFG.firebase ? ' openid email profile' : ''); // email lets live editing know who you are
 const DRIVE_API = 'https://www.googleapis.com/drive/v3', UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 const CHUNK = 8 * 1024 * 1024; // must be a multiple of 256 KiB
 const cloud = { token: null, exp: 0, user: null, folderId: null, tokenClient: null, waiters: [], projectFileId: null, uploads: 0, backup: true };
@@ -1167,6 +1183,8 @@ async function signIn() {
 }
 function signOut() {
   if (cloud.uploads > 0) { toast('Wait for uploads to finish before signing out.'); return; }
+  liveLeave();
+  try { if (window.firebase && firebase.apps && firebase.apps.length) firebase.auth().signOut(); } catch (e) {}
   try { if (cloud.token && window.google && google.accounts) google.accounts.oauth2.revoke(cloud.token, () => {}); } catch (e) {}
   cloud.token = null; cloud.user = null; cloud.folderId = null; cloud.projectFileId = null;
   $('#acct').open = false; renderCloud(); renderBin(); toast('Signed out of Google');
@@ -1343,6 +1361,7 @@ async function backupMedia(m) {
     const folder = await ensureFolder();
     const f = await uploadResumable(m.file, { name: m.name, parents: [folder], appProperties: { layerline: 'media' } }, p => { m.progress = p; j.set(p); updateMediaProgress(m); });
     m.driveId = f.id; m.cloud = 'saved'; m.err = null; dirty = true; j.done();
+    if (live.room) shareMediaWithMembers(); // collaborators can open it right away
   } catch (e) {
     m.cloud = 'error'; m.err = e.message; j.fail(`Couldn’t save ${m.name} to Drive. ${e.message}`);
   } finally { cloud.uploads--; renderBin(); renderCloud(); }
@@ -1474,6 +1493,7 @@ async function saveProject(opts = {}) {
       cloud.projectFileId = f.id;
     }
     dirty = false;
+    if (!live.room) liveJoin();
     j.done(opts.quiet ? '' : viewOnlyCopy ? 'You can only view the original, so this was saved as your own copy.' : missing ? `Project saved, but ${missing} file${missing > 1 ? 's' : ''} didn’t upload and will be missing when you reopen it.` : `Saved “${data.name}” to Drive`);
     return true;
   } catch (e) { j.fail(`Couldn’t save the project. ${e.message}`); return false; }
@@ -1500,6 +1520,7 @@ async function openProjects() {
   } catch (e) { pList.innerHTML = `<li class="dmsg err">${esc('Couldn’t load your projects. ' + e.message)}</li>`; }
 }
 function clearProject() {
+  liveLeave();
   pause();
   for (const id of [...els.keys()]) dropEl(id);
   for (const m of media.values()) if (m.url && m.url.startsWith('blob:')) URL.revokeObjectURL(m.url);
@@ -1540,6 +1561,7 @@ async function loadProject(fileId) {
     renderBin(); renderTimeline(); renderInspector(); seek(0); tlScroll.scrollLeft = 0;
     j.done(missing.length ? '' : failed ? `Opened “${p.name}”, but ${failed} media file${failed > 1 ? 's' : ''} weren’t saved with it.` : `Opened “${p.name}”`);
     if (missing.length) showMissing();
+    liveJoin();
   } catch (e) { j.fail(`Couldn’t open the project. ${e.message}`); }
 }
 function newProject() {
@@ -1619,6 +1641,7 @@ async function shareProject(email, role) {
     if (isNew) cloud.members.push(email);
     if (!(await saveProject({ quiet: true })) || !cloud.projectFileId) throw new Error('The project couldn’t be saved first.');
     const link = location.href.split('#')[0].split('?')[0];
+    liveAddMember(email);
     await grant(cloud.projectFileId, email, role, true, `I shared a Layerline video project with you. Open ${link} , sign in with this Google account, then choose Projects → Open shared project.`);
     j.done(`Shared with ${email}. Google Drive will email them.`);
     $('#sEmail').value = '';
@@ -1694,6 +1717,261 @@ $('#sClose').addEventListener('click', () => { shareModal.hidden = true; });
 $('#pShared').addEventListener('click', openSharedProject);
 $('#mPick').addEventListener('click', pickMissing);
 $('#mLater').addEventListener('click', () => { missModal.hidden = true; toast('Missing clips show as "Missing media". Reopen the project to choose them later.'); });
+
+/* ---------- live collaboration (Firebase Realtime Database) ---------- */
+// Each shared project gets a "room" keyed by its Drive file ID:
+//   rooms/<id>/members/<email with . as ,> = true   (who may join; checked by the database rules)
+//   rooms/<id>/doc/<key> = JSON string               (meta, tracks, clips/<id>, media/<id>)
+//   rooms/<id>/presence/<uid> = {email, name, color, c (cursor), sel, t}
+const FB = CFG.firebase && CFG.firebase.databaseURL ? CFG.firebase : null;
+const FB_VER = '10.12.2';
+const PEER_COLORS = ['#ff7a7a', '#5cb3ff', '#5fd47a', '#ffd24d', '#d68cff', '#ffa04d', '#3fd0e6', '#ff7ab8'];
+const live = { room: null, roomId: null, uid: null, presRef: null, peers: {}, lastSent: {}, recent: new Map(), loading: new Map(),
+  lastTick: 0, lastPresAt: 0, cursor: null, cursorDirty: false, lastSel: undefined, lastT: -1, joining: false, pendingRender: false, missTimer: null };
+let localDrag = null;
+const encKey = e => String(e).toLowerCase().replace(/\./g, ',');
+function colorFor(s) { let h = 7; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return PEER_COLORS[h % PEER_COLORS.length]; }
+const peerLayer = $('#peerLayer');
+
+async function initFirebase() {
+  if (!FB) return null;
+  if (!window.firebase || !firebase.apps) {
+    await loadScript(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-app-compat.js`);
+    await loadScript(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-auth-compat.js`);
+    await loadScript(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-database-compat.js`);
+  }
+  if (!firebase.apps.length) firebase.initializeApp(FB);
+  const auth = firebase.auth();
+  if (!auth.currentUser || (auth.currentUser.email || '').toLowerCase() !== myEmail()) {
+    const t = await getToken();
+    await auth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(null, t));
+  }
+  return firebase.database();
+}
+
+function liveLocal() {
+  const out = {
+    meta: JSON.stringify({ name: $('#projName').value.trim() || 'Untitled project', aspect: state.aspect }),
+    tracks: JSON.stringify(state.tracks)
+  };
+  for (const c of state.clips) out['clips/' + c.id] = JSON.stringify(c);
+  const addMedia = (id, name, type, driveId) => { if (driveId) out['media/' + id] = JSON.stringify({ name, type, driveId }); };
+  for (const m of media.values()) addMedia(m.id, m.name, m.type, m.driveId);
+  for (const pm of cloud.missing) addMedia(pm.id, pm.name, pm.type, pm.driveId);
+  for (const pm of live.loading.values()) addMedia(pm.id, pm.name, pm.type, pm.driveId);
+  return out;
+}
+const fresh = k => performance.now() - (live.recent.get(k) || 0) < 1200; // we changed this ourselves just now
+
+function liveApply(doc) {
+  doc = doc || {};
+  live.lastDoc = doc;
+  let skipped = false;
+  const isFresh = k => { const f = fresh(k); if (f) skipped = true; return f; };
+  const remote = {};
+  if (doc.meta) remote.meta = doc.meta;
+  if (doc.tracks) remote.tracks = doc.tracks;
+  for (const id in doc.clips || {}) remote['clips/' + id] = doc.clips[id];
+  for (const id in doc.media || {}) remote['media/' + id] = doc.media[id];
+  let redraw = false;
+  if (remote.meta && remote.meta !== live.lastSent.meta && !isFresh('meta')) {
+    const m = JSON.parse(remote.meta);
+    if (document.activeElement !== $('#projName')) $('#projName').value = m.name;
+    if (ASPECTS[m.aspect] && m.aspect !== state.aspect) setAspect(m.aspect);
+    live.lastSent.meta = remote.meta; redraw = true;
+  }
+  if (remote.tracks && remote.tracks !== live.lastSent.tracks && !isFresh('tracks')) {
+    state.tracks = JSON.parse(remote.tracks); live.lastSent.tracks = remote.tracks; redraw = true;
+  }
+  const byId = new Map(state.clips.map(c => [c.id, c]));
+  let clipsChanged = false;
+  for (const k in remote) {
+    if (!k.startsWith('clips/') || remote[k] === live.lastSent[k] || isFresh(k)) continue;
+    const id = k.slice(6); if (id === localDrag) continue;
+    byId.set(id, JSON.parse(remote[k])); live.lastSent[k] = remote[k]; clipsChanged = true;
+  }
+  for (const k of Object.keys(live.lastSent)) {
+    if (!k.startsWith('clips/') || k in remote || isFresh(k)) continue;
+    const id = k.slice(6); if (id === localDrag) continue;
+    byId.delete(id); delete live.lastSent[k]; clipsChanged = true;
+    if (state.selected === id) state.selected = null;
+  }
+  if (clipsChanged) { state.clips = [...byId.values()]; reconcileEls(); redraw = true; }
+  for (const k in remote) {
+    if (!k.startsWith('media/')) continue;
+    const id = k.slice(6);
+    live.lastSent[k] = remote[k];
+    if (media.has(id) || live.loading.has(id) || cloud.missing.some(x => x.id === id)) continue;
+    liveLoadMedia(Object.assign({ id }, JSON.parse(remote[k])));
+  }
+  if (redraw) liveRender();
+  // something we edited a moment ago was skipped: look again once our edit has settled, so no remote change is lost
+  if (skipped) { clearTimeout(live.reapply); live.reapply = setTimeout(() => { if (live.room && live.lastDoc) liveApply(live.lastDoc); }, 1300); }
+}
+function liveRender() {
+  if (localDrag) { live.pendingRender = true; return; }
+  renderTimeline();
+  const ae = document.activeElement;
+  if (!(ae && inspBody.contains(ae))) renderInspector();
+}
+async function liveLoadMedia(pm) {
+  live.loading.set(pm.id, pm);
+  try { await loadDriveMedia(pm); toast(`A collaborator added ${pm.name}`); }
+  catch (e) {
+    cloud.missing.push(pm);
+    clearTimeout(live.missTimer);
+    live.missTimer = setTimeout(() => { if (cloud.missing.length) showMissing(); }, 1500);
+  } finally { live.loading.delete(pm.id); renderBin(); renderTimeline(); }
+}
+
+async function liveJoin() {
+  if (!FB || !cloud.projectFileId || live.joining || !cloud.user) return;
+  if (live.room && live.roomId === cloud.projectFileId) return;
+  if (!cloud.members.some(e => e && e !== myEmail())) return; // only shared projects go live
+  live.joining = true;
+  try {
+    const db = await initFirebase();
+    if (!db) return;
+    liveLeave();
+    const roomId = cloud.projectFileId, room = db.ref('rooms/' + roomId);
+    const mem = {};
+    for (const e of cloud.members) if (e) mem['members/' + encKey(e)] = true;
+    await room.update(mem);
+    const snap = await room.child('doc').get();
+    live.room = room; live.roomId = roomId; live.lastSent = {}; live.recent.clear();
+    if (snap.exists()) {
+      // the room holds the newest live state: adopt it, including deletions made since the last Drive save
+      const d = snap.val() || {}, rc = d.clips || {};
+      state.clips = state.clips.filter(c => rc[c.id]);
+      for (const k of Object.keys(rc)) live.lastSent['clips/' + k] = '\u0000'; // force apply
+      liveApply(d);
+    }
+    room.child('doc').on('value', s => liveApply(s.val()), liveError);
+    live.uid = firebase.auth().currentUser.uid;
+    live.presRef = room.child('presence/' + live.uid);
+    await live.presRef.onDisconnect().remove();
+    const u = cloud.user || {};
+    await live.presRef.set({ email: myEmail(), name: u.displayName || myEmail().split('@')[0], color: colorFor(myEmail()), sel: state.selected || null, t: 0, at: firebase.database.ServerValue.TIMESTAMP });
+    room.child('presence').on('value', s => {
+      const v = s.val() || {}; delete v[live.uid]; live.peers = v; renderPeerChips();
+    }, () => {});
+    renderPeerChips();
+  } catch (e) { liveError(e); }
+  finally { live.joining = false; }
+}
+function liveLeave() {
+  if (!live.room) return;
+  try {
+    live.room.child('doc').off(); live.room.child('presence').off();
+    if (live.presRef) { live.presRef.onDisconnect().cancel(); live.presRef.remove(); }
+  } catch (e) {}
+  live.room = null; live.roomId = null; live.presRef = null; live.peers = {}; live.lastSent = {};
+  peerLayer.innerHTML = ''; renderPeerChips();
+}
+function liveError(e) {
+  const txt = String((e && (e.code || e.message)) || '');
+  toast(/permission/i.test(txt) ? 'Live editing isn’t on for you in this project yet. Ask the owner to open it once.' : `Live editing stopped. ${e && e.message ? e.message : ''}`);
+  liveLeave();
+}
+function liveAddMember(email) { if (live.room) live.room.child('members/' + encKey(email)).set(true).catch(() => {}); }
+
+// called every animation frame
+function liveTick(ts) {
+  if (!live.room) return;
+  if (ts - live.lastTick > 150) {
+    live.lastTick = ts;
+    const cur = liveLocal(), upd = {};
+    for (const k in cur) if (live.lastSent[k] !== cur[k]) { upd['doc/' + k] = cur[k]; live.lastSent[k] = cur[k]; live.recent.set(k, performance.now()); }
+    for (const k of Object.keys(live.lastSent)) if (!(k in cur) && !k.startsWith('media/')) { upd['doc/' + k] = null; delete live.lastSent[k]; live.recent.set(k, performance.now()); }
+    if (Object.keys(upd).length) live.room.update(upd).catch(liveError);
+  }
+  const sel = state.selected || null;
+  if (live.presRef && ts - live.lastPresAt > 60 && (live.cursorDirty || sel !== live.lastSel || Math.abs(state.time - live.lastT) > 0.04)) {
+    live.lastPresAt = ts; live.cursorDirty = false; live.lastSel = sel; live.lastT = state.time;
+    live.presRef.update({ c: live.cursor, sel, t: Math.round(state.time * 1000) / 1000 }).catch(() => {});
+  }
+  renderPeers();
+}
+
+// where my pointer is, in terms that mean the same thing on every screen
+document.addEventListener('pointermove', e => {
+  if (!live.room) return;
+  const t = e.target && e.target.closest ? e.target : null;
+  const lane = t && t.closest('.lane[data-track]');
+  const ruler = !lane && t && t.closest('#rulerLane');
+  let c;
+  if (lane || ruler) {
+    const r = (lane || ruler).getBoundingClientRect();
+    c = { a: 'tl', tr: lane ? lane.dataset.track : null, t: Math.round(Math.max(0, (e.clientX - r.left) / state.pps) * 1000) / 1000, fy: Math.round(clamp((e.clientY - r.top) / r.height, 0, 1) * 100) / 100 };
+  } else if (t === canvas) {
+    const r = canvas.getBoundingClientRect();
+    c = { a: 'st', x: Math.round((e.clientX - r.left) / r.width * 1000) / 1000, y: Math.round((e.clientY - r.top) / r.height * 1000) / 1000 };
+  } else c = { a: 'pg', x: Math.round(e.clientX / innerWidth * 1000) / 1000, y: Math.round(e.clientY / innerHeight * 1000) / 1000 };
+  live.cursor = c; live.cursorDirty = true;
+}, { passive: true });
+document.documentElement.addEventListener('pointerleave', () => { if (live.room) { live.cursor = null; live.cursorDirty = true; } });
+
+function peerPos(c) {
+  if (!c) return null;
+  if (c.a === 'tl') {
+    const lane = c.tr ? inner.querySelector(`.lane[data-track="${CSS.escape(c.tr)}"]`) : $('#rulerLane');
+    if (!lane) return null;
+    const r = lane.getBoundingClientRect(), vr = tlScroll.getBoundingClientRect();
+    const x = r.left + c.t * state.pps, y = r.top + c.fy * r.height;
+    return { x, y, hidden: x < vr.left + HEAD_W - 4 || x > vr.right || y < vr.top || y > vr.bottom };
+  }
+  if (c.a === 'st') { const r = canvas.getBoundingClientRect(); return { x: r.left + c.x * r.width, y: r.top + c.y * r.height }; }
+  return { x: c.x * innerWidth, y: c.y * innerHeight };
+}
+const CURSOR_SVG = '<svg width="18" height="20" viewBox="0 0 18 20" aria-hidden="true"><path d="M1.5 1.5l14 7.3-6.4 1.6-3.3 6.1z" fill="var(--pc)" stroke="#111" stroke-width="1.3" stroke-linejoin="round"/></svg>';
+const peerEls = new Map();
+let peerSelApplied = new Map();
+function renderPeers() {
+  const seen = new Set();
+  const ruler = $('#rulerLane'), rr = ruler ? ruler.getBoundingClientRect() : null, vr = tlScroll.getBoundingClientRect();
+  for (const [uid, p] of Object.entries(live.peers)) {
+    seen.add(uid);
+    let el = peerEls.get(uid);
+    if (!el) {
+      el = { cur: document.createElement('div'), ph: document.createElement('div') };
+      el.cur.className = 'pc'; el.cur.innerHTML = CURSOR_SVG + '<span></span>';
+      el.ph.className = 'pph';
+      peerLayer.append(el.ph, el.cur); peerEls.set(uid, el);
+    }
+    const color = p.color || colorFor(p.email || uid);
+    el.cur.style.setProperty('--pc', color); el.ph.style.setProperty('--pc', color);
+    const label = el.cur.querySelector('span'); const nm = p.name || (p.email || '').split('@')[0];
+    if (label.textContent !== nm) label.textContent = nm;
+    const pos = peerPos(p.c);
+    if (!pos || pos.hidden) el.cur.style.opacity = '0';
+    else { el.cur.style.opacity = '1'; el.cur.style.transform = `translate(${pos.x - 1.5}px, ${pos.y - 1.5}px)`; }
+    if (rr && typeof p.t === 'number') {
+      const x = rr.left + p.t * state.pps;
+      const show = x >= vr.left + HEAD_W && x <= vr.right;
+      el.ph.style.opacity = show ? '0.85' : '0';
+      el.ph.style.transform = `translate(${x - 1}px, ${vr.top}px)`; el.ph.style.height = `${vr.height}px`;
+    } else el.ph.style.opacity = '0';
+  }
+  for (const [uid, el] of peerEls) if (!seen.has(uid)) { el.cur.remove(); el.ph.remove(); peerEls.delete(uid); }
+  // outline the clips other people have selected
+  const want = new Map();
+  for (const p of Object.values(live.peers)) if (p.sel) want.set(p.sel, p.color || colorFor(p.email || ''));
+  for (const [id] of peerSelApplied) if (!want.has(id)) { const c = inner.querySelector(`.clip[data-id="${CSS.escape(id)}"]`); if (c) c.classList.remove('psel'); }
+  for (const [id, color] of want) {
+    const c = inner.querySelector(`.clip[data-id="${CSS.escape(id)}"]`);
+    if (c && (!c.classList.contains('psel') || c.style.getPropertyValue('--pc') !== color)) { c.classList.add('psel'); c.style.setProperty('--pc', color); }
+  }
+  peerSelApplied = want;
+}
+function renderPeerChips() {
+  const box = $('#peers');
+  const list = Object.values(live.peers);
+  if (!live.room) { box.hidden = true; box.innerHTML = ''; return; }
+  box.hidden = false;
+  const byEmail = new Map(); for (const p of list) byEmail.set(p.email, p);
+  box.innerHTML = `<span class="live-pill" title="Changes sync instantly with everyone on this project">Live</span>` +
+    [...byEmail.values()].map(p => `<span class="peer" style="--pc:${esc(p.color || colorFor(p.email))}" title="${esc(p.email || '')} is editing">${esc(((p.name || p.email || '?').trim()[0] || '?').toUpperCase())}</span>`).join('');
+}
 
 /* top bar state */
 function renderCloud() {

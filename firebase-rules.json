@@ -1,0 +1,10 @@
+{
+  "rules": {
+    "rooms": {
+      "$room": {
+        ".read": "auth != null && auth.token.email_verified == true && data.child('members').child(auth.token.email.toLowerCase().replace('.', ',')).exists()",
+        ".write": "auth != null && auth.token.email_verified == true && (data.child('members').child(auth.token.email.toLowerCase().replace('.', ',')).exists() || (!data.exists() && newData.child('members').child(auth.token.email.toLowerCase().replace('.', ',')).exists()))"
+      }
+    }
+  }
+}
